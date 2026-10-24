@@ -7,6 +7,7 @@ import { sessaoAutenticadaRecentemente } from "@/lib/auth";
 import { emailDoUsuario } from "@/lib/pii";
 import { enviarAvisoResgate } from "@/lib/email";
 import { log } from "@/lib/log";
+import { MSG_PERFIL_INCOMPLETO, perfilCompleto } from "@/lib/perfil";
 
 const body = z.object({
   valor: z.coerce.number({ error: "Valor inválido" }).positive("Valor inválido").max(100, "O limite diário por solicitação é R$ 100,00."),
@@ -21,12 +22,13 @@ export const POST = api(
     if (valor <= 0) throw new HttpError(400, "Valor inválido");
     const limites = await limitesAntifraude();
     const resultado = await prisma().$transaction(async (tx) => {
-      const contas = await tx.$queryRaw<{ id: number; saldo: string; nome: string; email: string; email_verificado: boolean }[]>`
-        SELECT id, saldo::text AS saldo, nome, email, email_verificado FROM usuarios
+      const contas = await tx.$queryRaw<{ id: number; saldo: string; nome: string; email: string }[]>`
+        SELECT id, saldo::text AS saldo, nome, email FROM usuarios
         WHERE id = ${usuario.id} AND tipo = 'cliente' AND status = 'ativo' AND deletado_em IS NULL FOR UPDATE`;
       const conta = contas[0];
       if (!conta) throw new HttpError(404, "Conta não encontrada.");
-      if (!conta.email_verificado) throw new HttpError(403, "Confirme seu e-mail antes de solicitar um resgate.");
+      const cli = await tx.usuario.findUniqueOrThrow({ where: { id: usuario.id } });
+      if (!perfilCompleto(cli)) throw new HttpError(403, MSG_PERFIL_INCOMPLETO, { perfil_incompleto: true });
       const usos = await tx.$queryRaw<{ total: string }[]>`
         SELECT COALESCE(SUM(valor), 0)::text AS total FROM resgates
         WHERE id_cliente = ${usuario.id} AND (criado_em AT TIME ZONE ${tz()})::date = (now() AT TIME ZONE ${tz()})::date`;

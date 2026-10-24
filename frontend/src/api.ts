@@ -1,4 +1,4 @@
-export type Profile = { id: number; nome: string; email: string; tipo: 'cliente' | 'loja' | 'admin'; id_loja?: number };
+export type Profile = { id: number; nome: string; email: string; tipo: 'cliente' | 'loja' | 'admin'; id_loja?: number; perfil_completo?: boolean };
 export class ApiError extends Error { status: number; data: Record<string, any>; constructor(message: string, status: number, data: Record<string, any> = {}) { super(message); this.status = status; this.data = data; } }
 export async function api<T = any>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`/api${path}`, {

@@ -20,7 +20,7 @@ const navItems: Record<Profile['tipo'], { id: string; label: string; icon: strin
     { id: 'dashboard', label: 'Início', icon: '⌂' }, { id: 'saldo', label: 'Meu saldo', icon: '◉' },
     { id: 'historico', label: 'Histórico', icon: '▤' }, { id: 'qrcode', label: 'Ler QR Code', icon: '▦' },
     { id: 'meu-codigo', label: 'Meu código', icon: '▧' }, { id: 'como-funciona', label: 'Como funciona', icon: '♻' },
-    { id: 'loja-papelaria', label: 'JS Papelaria', icon: '▣' },
+    { id: 'loja-papelaria', label: 'JS Papelaria', icon: '▣' }, { id: 'perfil', label: 'Meu perfil', icon: '♙' },
   ],
   loja: [
     { id: 'dashboard', label: 'Início', icon: '⌂' }, { id: 'scan', label: 'Scan QR', icon: '▦' },
@@ -58,7 +58,7 @@ export default function App() {
       <Route path="/mfa/celular" element={<MfaPage phone onAuthenticated={loadProfile} />} />
       <Route path="/admin-mfa" element={<Navigate to="/mfa" replace />} />
       <Route path="/admin-mfa/celular" element={<Navigate to="/mfa/celular" replace />} />
-      <Route path="/verificar-email" element={<EmailVerificationPage onAuthenticated={loadProfile} />} />
+      <Route path="/verificar-email" element={<Navigate to="/app/cliente/perfil" replace />} />
       <Route path="/privacidade" element={<PrivacyPage />} />
       <Route path="/app/:role/*" element={!ready ? <LoadingPage /> : !profile ? <Navigate to="/login" replace /> : <RoleGuard profile={profile} onLogout={logout} />} />
       <Route path="*" element={<Navigate to="/" replace />} />
@@ -91,15 +91,14 @@ function CopyButton({ text, label = 'Copiar', done = 'Copiado!', className = 'bu
 }
 type MfaSetup = { secret: string; otpauth_url: string };
 function MfaPage({ onAuthenticated, phone = false }: { onAuthenticated: () => Promise<void>; phone?: boolean }) {
-  const navigate = useNavigate(); const location = useLocation();
-  const novaConta = Boolean((location.state as { novaConta?: boolean } | null)?.novaConta);
+  const navigate = useNavigate();
   const [setup, setSetup] = useState<MfaSetup | null>(null);
   const [code, setCode] = useState(''); const [recovery, setRecovery] = useState<string[]>([]);
   const [error, setError] = useState(''); const [busy, setBusy] = useState(false); const [appMissing, setAppMissing] = useState(false);
   const loadSetup = useCallback((regenerar = false) => api<MfaSetup>('/auth/mfa/setup', { method: 'POST', body: JSON.stringify({ regenerar }) }).then(setSetup).catch(e => setError(e instanceof Error ? e.message : 'Não foi possível iniciar a configuração.')), []);
   useEffect(() => { void loadSetup(); }, [loadSetup]);
   const confirm = async (e: FormEvent) => { e.preventDefault(); setBusy(true); setError(''); try { const d = await post<{ codigos_recuperacao: string[] }>('/auth/mfa/confirm', { codigo: code }); setRecovery(d.codigos_recuperacao); await onAuthenticated(); } catch (e) { setError(e instanceof Error ? e.message : 'Código inválido.'); } finally { setBusy(false); } };
-  const finish = async () => { if (novaConta) { try { await post('/auth/verificar-email/solicitar', {}); } catch { /* o reenvio fica disponível na tela de confirmação */ } navigate('/verificar-email'); return; } navigate('/'); };
+  const finish = async () => { navigate('/'); };
   // Se o app autenticador abrir, a página vai para segundo plano. Se continuar visível após ~2s, o app provavelmente não está instalado.
   const tryOpenApp = () => { let left = false; const onChange = () => { if (document.visibilityState === 'hidden') left = true; }; document.addEventListener('visibilitychange', onChange); window.setTimeout(() => { document.removeEventListener('visibilitychange', onChange); if (!left) setAppMissing(true); }, 2000); };
   const regenerate = () => { setError(''); setCode(''); setSetup(null); void loadSetup(true); };
@@ -155,14 +154,6 @@ function RecoveryCodesPanel() {
   </Panel>;
 }
 
-function EmailVerificationPage({ onAuthenticated }: { onAuthenticated: () => Promise<void> }) {
-  const navigate = useNavigate();
-  const [code, setCode] = useState(''); const [message, setMessage] = useState('Se o envio de e-mail estiver configurado, você receberá um código em instantes.'); const [error, setError] = useState(''); const [busy, setBusy] = useState(false); const [done, setDone] = useState(false);
-  const run = async (fn: () => Promise<void>) => { setBusy(true); setError(''); try { await fn(); } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível concluir.'); } finally { setBusy(false); } };
-  const confirm = (e: FormEvent) => { e.preventDefault(); void run(async () => { const d = await post<{ mensagem: string }>('/auth/verificar-email/confirmar', { codigo: code }); setMessage(d.mensagem); setDone(true); }); };
-  return <main className="auth-page"><section className="auth-card"><Brand /><h1>Confirme seu e-mail</h1><p>Informe o código enviado para a sua conta. A confirmação é necessária para usar QR Codes e solicitar resgates.</p>{message && <div className="alert info">{message}</div>}{error && <div role="alert" className="alert error">{error}</div>}{!done && <><form className="stack" onSubmit={confirm}><Field label="Código de seis dígitos" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={code} onChange={v => setCode(v.replace(/\D/g, '').slice(0, 6))} required /><button className="button primary full" disabled={busy || code.length !== 6}>{busy ? 'Verificando…' : 'Confirmar e-mail'}</button></form><button className="button subtle full" disabled={busy} onClick={() => void run(async () => { const d = await post<{ mensagem: string }>('/auth/verificar-email/solicitar', {}); setMessage(d.mensagem); })}>Reenviar código</button></>}{done && <button className="button primary full" onClick={() => { void onAuthenticated().then(() => navigate('/')); }}>Continuar</button>}</section></main>;
-}
-
 function Brand({ compact = false }: { compact?: boolean }) { return <div className={`brand ${compact ? 'compact' : ''}`}><img className="brand-mark" src="/logo.png" alt="" width={42} height={42} /><span>CrisoVerde</span></div>; }
 function AuthPage({ mode, onAuthenticated }: { mode: 'login' | 'signup'; onAuthenticated: () => Promise<void> }) {
   const navigate = useNavigate(); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
@@ -190,9 +181,8 @@ function AuthPage({ mode, onAuthenticated }: { mode: 'login' | 'signup'; onAuthe
     try {
       if (mode === 'signup' && !accepted) throw new Error('Leia e aceite a Política de Privacidade para continuar.');
       const resultado = await post<any>(mode === 'login' ? '/auth/login' : '/auth/cadastro', mode === 'login' ? { email, senha: password, ...(mfaCode ? { codigo_mfa: mfaCode } : {}) } : { nome: name, email, telefone: phone, senha: password });
-      if (resultado?.mfa_setup_required) { navigate(isMobileDevice() ? '/mfa/celular' : '/mfa', { state: { novaConta: mode === 'signup' } }); return; }
-      if (mode === 'signup') { try { await post('/auth/verificar-email/solicitar', {}); } catch { /* o envio do código não deve travar o cadastro */ } await onAuthenticated(); navigate('/'); return; }
-      await onAuthenticated(); navigate('/');
+      if (resultado?.mfa_setup_required) { navigate(isMobileDevice() ? '/mfa/celular' : '/mfa'); return; }
+            await onAuthenticated(); navigate('/');
     } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível entrar.'); }
     finally { setBusy(false); }
   };
@@ -271,9 +261,14 @@ function Dashboard({ profile, onLogout }: { profile: Profile; onLogout: () => vo
     <main className="main-area"><header className="topbar"><div><span className="role-kicker">{roleName[profile.tipo]}</span><h1>{current.label}</h1></div><div className="user-chip"><div className="avatar">{profile.nome.slice(0, 1).toUpperCase()}</div><div><strong>{profile.nome}</strong><span>{profile.email}</span></div><button className="mobile-logout" onClick={onLogout} aria-label="Sair da conta" title="Sair da conta">↪</button></div></header><div className="content-area"><RoleContent key={`${profile.tipo}-${section}`} profile={profile} section={section} onNavigate={id => navigate(`${routeFor(profile)}/${id}`)} /></div><footer className="app-footer">CrisoVerde · <Link to="/privacidade">Privacidade e cookies</Link><button className="inline-link" onClick={() => window.dispatchEvent(new Event('open-cookie-settings'))}>Preferências de cookies</button></footer></main></div>;
 }
 
+function ProfilePendingBanner() {
+  const navigate = useNavigate();
+  return <div className="alert info profile-banner" role="status"><div><strong>Complete seu perfil para liberar seus resgates</strong><span>Informe seu e-mail e celular. Leva menos de um minuto.</span></div><button className="button primary" onClick={() => navigate('/app/cliente/perfil')}>Completar perfil</button></div>;
+}
+
 function RoleContent({ profile, section, onNavigate }: { profile: Profile; section: string; onNavigate: (id: string) => void }) {
   if (section === 'seguranca') return <SecurityPage />;
-  if (profile.tipo === 'cliente') return <CustomerContent section={section} profile={profile} onNavigate={onNavigate} />;
+  if (profile.tipo === 'cliente') return <>{profile.perfil_completo === false && section !== 'perfil' && <ProfilePendingBanner />}<CustomerContent section={section} profile={profile} onNavigate={onNavigate} /></>;
   if (profile.tipo === 'loja') return <StoreContent section={section} profile={profile} />;
   return <AdminContent section={section} />;
 }
@@ -349,10 +344,15 @@ function CustomerContent({ section, profile, onNavigate }: { section: string; pr
   const [token, setToken] = useState(''); const [validated, setValidated] = useState<any>(null); const [busy, setBusy] = useState(false);
   const [amount, setAmount] = useState(''); const [qrData, setQrData] = useState<any>(null); const [filter, setFilter] = useState('');
   useEffect(() => { if (section === 'meu-codigo') void api<any>('/cliente/meu-qr').then(setQrData).catch(e => notify(e.message, 'error')); }, [section]);
+  const navigate = useNavigate();
+  const handleError = (e: unknown, fallback: string) => {
+    if (e instanceof ApiError && e.data.perfil_incompleto) { notify('Complete seu perfil para continuar.', 'error'); navigate('/app/cliente/perfil'); return; }
+    notify(e instanceof Error ? e.message : fallback, 'error');
+  };
   const validate = async (e?: FormEvent, valor = token) => { e?.preventDefault(); setBusy(true); setValidated(null); try { const d = await post<any>('/qr/validar', { token: valor }); setValidated({ ...d, token: valor }); } catch (e) { notify(e instanceof Error ? e.message : 'QR inválido.', 'error'); } finally { setBusy(false); } };
   const scanValue = (value: string) => { let t = value.trim(); try { const p = JSON.parse(value); t = String(p.token || value).trim(); } catch {} setToken(t); void validate(undefined, t); };
-  const confirm = async () => { if (!validated) return; setBusy(true); try { const d = await post<any>('/qr/confirmar', { token: validated.token, id_transacao: validated.id_transacao }); notify(d.mensagem || 'Transação confirmada.'); setValidated(null); setToken(''); await wallet.reload(); await history.reload(); } catch (e) { notify(e instanceof Error ? e.message : 'Não foi possível confirmar.', 'error'); } finally { setBusy(false); } };
-  const redeem = async (e: FormEvent) => { e.preventDefault(); setBusy(true); try { const d = await post<any>('/cliente/resgatar', { valor: Number(amount), forma: 'pix' }); notify(d.mensagem || 'Resgate solicitado.'); setAmount(''); await wallet.reload(); await history.reload(); } catch (e) { notify(e instanceof Error ? e.message : 'Resgate não concluído.', 'error'); } finally { setBusy(false); } };
+  const confirm = async () => { if (!validated) return; setBusy(true); try { const d = await post<any>('/qr/confirmar', { token: validated.token, id_transacao: validated.id_transacao }); notify(d.mensagem || 'Transação confirmada.'); setValidated(null); setToken(''); await wallet.reload(); await history.reload(); } catch (e) { handleError(e, 'Não foi possível confirmar.'); } finally { setBusy(false); } };
+  const redeem = async (e: FormEvent) => { e.preventDefault(); setBusy(true); try { const d = await post<any>('/cliente/resgatar', { valor: Number(amount), forma: 'pix' }); notify(d.mensagem || 'Resgate solicitado.'); setAmount(''); await wallet.reload(); await history.reload(); } catch (e) { handleError(e, 'Resgate não concluído.'); } finally { setBusy(false); } };
   const w = wallet.data || {};
   if (section === 'dashboard') return <>
     <PageTitle title={`Olá, ${profile.nome.split(' ')[0]} 👋`} description="Acompanhe suas recompensas e o impacto da reciclagem." />
@@ -366,7 +366,39 @@ function CustomerContent({ section, profile, onNavigate }: { section: string; pr
   if (section === 'meu-codigo') return <><PageTitle title="Meu código" description="Mostre este código para a loja identificar sua conta." /><Panel><div className="qr-center">{qrData ? <QRCodeSVG value={qrData.qr_data} size={240} level="M" /> : <LoadingBlock />}<p>Este código de identificação é temporário. Gere outro quando necessário.</p>{qrData?.validade_seg && <small>Validade: {qrData.validade_seg} segundos</small>}<button className="button primary" onClick={() => void api<any>('/cliente/meu-qr').then(setQrData).catch(e => notify(e.message, 'error'))}>Gerar novo código</button></div></Panel></>;
   if (section === 'como-funciona') return <><PageTitle title="Como funciona" description="Recicle materiais nas lojas parceiras e receba créditos na sua carteira." /><div className="steps-grid">{[['01', 'Separe os materiais', 'Leve papelão, plástico, alumínio ou vidro a uma loja parceira.'], ['02', 'A loja registra a troca', 'A loja informa as quantidades e gera um QR Code de crédito.'], ['03', 'Leia e confira', 'Use o scanner para validar o QR e confira a loja e o valor.'], ['04', 'Confirme a transação', 'Depois da sua confirmação, os créditos entram no saldo e no histórico.']].map(([n, title, text]) => <Panel key={n}><span className="step-no">{n}</span><h3>{title}</h3><p className="muted">{text}</p></Panel>)}</div><Panel title="Conversão atual"><div className="material-rates">{materials.map((m, i) => <div key={m}><span>{['📦', '🧴', '🥫', '🍾'][i]}</span><strong>{materialLabels[m]}</strong><small>Taxa configurada pela administração</small></div>)}</div><p className="fine-print">O valor final é calculado no servidor com as taxas vigentes da plataforma.</p></Panel></>;
   if (section === 'loja-papelaria') return <><PageTitle title="JS Papelaria" description="Catálogo apresentado no aplicativo original." /><div className="alert info">Este catálogo era demonstrativo e não possui integração de estoque/preços no backend recebido. A confirmação real de descontos é feita pela loja via QR Code; use “Ler QR Code” para finalizar uma transação registrada.</div><ProductCatalog saldo={Number(w.saldo || 0)} /></>;
+  if (section === 'perfil') return <CustomerProfile profile={profile} onSaved={() => onNavigate('dashboard')} />;
   return <Navigate to="/app/cliente/dashboard" replace />;
+}
+function CustomerProfile({ profile, onSaved }: { profile: Profile; onSaved: () => void }) {
+  const data = useLoad<any>('/cliente/perfil');
+  const [form, setForm] = useState<{ nome: string; email: string; telefone: string } | null>(null);
+  const [senhaAtual, setSenhaAtual] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
+  useEffect(() => { if (data.data && !form) setForm({ nome: data.data.nome || '', email: data.data.email || '', telefone: data.data.telefone || '' }); }, [data.data, form]);
+  if (data.loading || !form) return <><PageTitle title="Meu perfil" description="Seus dados de contato e de acesso." />{data.error ? <ErrorBlock error={data.error} /> : <LoadingBlock />}</>;
+  const google = data.data?.provider === 'google';
+  const mudouEmail = form.email.trim().toLowerCase() !== String(data.data?.email || '').toLowerCase();
+  const set = (k: 'nome' | 'email' | 'telefone') => (v: string) => setForm(f => f && ({ ...f, [k]: v }));
+  const save = async (e: FormEvent) => {
+    e.preventDefault(); setBusy(true); setError('');
+    try {
+      const d = await api<any>('/cliente/perfil', { method: 'PUT', body: JSON.stringify({ ...form, ...(mudouEmail ? { senha_atual: senhaAtual } : {}) }) });
+      notify(d.mensagem || 'Perfil salvo.'); setSenhaAtual('');
+      if (profile.perfil_completo === false && d.perfil_completo) onSaved();
+    } catch (err) { setError(err instanceof Error ? err.message : 'Não foi possível salvar.'); } finally { setBusy(false); }
+  };
+  return <>
+    <PageTitle title="Meu perfil" description="Seus dados de contato e de acesso." />
+    {profile.perfil_completo === false ? <div className="alert info">Preencha todos os campos abaixo e salve. Assim que o perfil estiver completo, seus resgates são liberados automaticamente.</div> : <div className="alert success">Perfil completo. Seus resgates estão liberados.</div>}
+    <Panel title="Dados pessoais"><form className="stack" onSubmit={save}>
+      {error && <div role="alert" className="alert error">{error}</div>}
+      <Field label="Nome completo" value={form.nome} onChange={set('nome')} autoComplete="name" required maxLength={120} />
+      <Field label="E-mail" type="email" value={form.email} onChange={set('email')} autoComplete="email" required disabled={google} />
+      {google && <p className="fine-print">Sua conta usa o e-mail do Google, por isso ele não pode ser alterado aqui.</p>}
+      <Field label="Celular com DDD" type="tel" inputMode="tel" value={form.telefone} onChange={set('telefone')} autoComplete="tel" placeholder="(75) 99999-9999" required maxLength={20} />
+      {mudouEmail && !google && <Field label="Senha atual (necessária para trocar o e-mail)" type="password" value={senhaAtual} onChange={setSenhaAtual} autoComplete="current-password" required />}
+      <button className="button primary" disabled={busy}>{busy ? 'Salvando…' : 'Salvar perfil'}</button>
+    </form></Panel>
+  </>;
 }
 function HistoryTable({ history }: { history: ReturnType<typeof useLoad<any[]>> }) {
   if (history.loading) return <Panel title="Movimentações"><LoadingBlock /></Panel>;

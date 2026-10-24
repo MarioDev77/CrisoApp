@@ -2,7 +2,7 @@ import { z } from "zod";
 import { Buffer } from "node:buffer";
 import { normalizarTelefone } from "./crypto";
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const email = z.string({ error: "Informe o e-mail" }).trim().toLowerCase().max(255).regex(EMAIL_RE, "E-mail inválido");
 export const senhaNova = z
   .string({ error: "Informe a senha" })

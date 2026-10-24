@@ -1,3 +1,4 @@
+import { MSG_PERFIL_INCOMPLETO, perfilCompleto } from "@/lib/perfil";
 import { z } from "zod";
 import { api } from "@/lib/api";
 import { prisma } from "@/lib/db";
@@ -16,7 +17,7 @@ const body = z.object({ token: z.string({ error: "Token ausente" }).trim().min(1
 type QrRow = { token: string; id_loja: number; nome_loja: string | null; tipo: "credito" | "debito"; valor: string; materiais: unknown; materiais_desc: string; produto: string | null; dados_enc: string | null; status: string; ip_gerado: string | null; ip_enc: string | null; expira_em: Date };
 type Resultado =
   | { ok: true; msg: string; saldo: number }
-  | { ok: false; status: number; msg: string; auditoria?: { acao: string; detalhe: string; idCliente: number } };
+  | { ok: false; status: number; msg: string; extra?: Record<string, unknown>; auditoria?: { acao: string; detalhe: string; idCliente: number } };
 
 export const POST = api(
   { auth: ["cliente"], body, limites: [{ nome: "qr-confirmar", por: "usuario", max: 20, janelaSeg: 900, msg: "Muitas tentativas. Tente novamente em 15 minutos." }] },
@@ -41,7 +42,7 @@ export const POST = api(
           SELECT id FROM usuarios WHERE id = ${usuario.id} AND tipo = 'cliente' AND status = 'ativo' AND deletado_em IS NULL FOR UPDATE`;
         if (lock.length === 0) return { ok: false, status: 404, msg: "Cliente nao encontrado" };
         const cli = await tx.usuario.findUniqueOrThrow({ where: { id: usuario.id } });
-        if (!cli.emailVerificado) return { ok: false, status: 403, msg: "Confirme seu e-mail antes de confirmar um QR Code." };
+        if (!perfilCompleto(cli)) return { ok: false, status: 403, msg: MSG_PERFIL_INCOMPLETO, extra: { perfil_incompleto: true } };
 
         const qrIp = ipDoQr({ ipGerado: qr.ip_gerado, ipEnc: qr.ip_enc });
         if (qrIp && ip !== "desconhecido" && qrIp !== ip) {
@@ -123,7 +124,7 @@ export const POST = api(
     if (!r.ok) {
       // auditoria fora da transação (não é perdida pelo rollback)
       if (r.auditoria) await auditar(r.auditoria.acao, r.auditoria.detalhe, ip, r.auditoria.idCliente);
-      throw new HttpError(r.status, r.msg);
+      throw new HttpError(r.status, r.msg, r.extra);
     }
     return { sucesso: true, mensagem: r.msg, novo_saldo: arred(r.saldo) };
   },
