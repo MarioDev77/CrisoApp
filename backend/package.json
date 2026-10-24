@@ -9,7 +9,7 @@
     "dev": "next dev",
     "dev:web": "npm --prefix ../frontend run dev",
     "build": "npm run build:web && prisma generate && next build --webpack",
-    "build:web": "npm --prefix ../frontend ci && npm --prefix ../frontend run build && node scripts/copy-frontend.mjs",
+    "build:web": "node scripts/build-web.mjs",
     "start": "next start",
     "lint": "eslint src prisma",
     "typecheck": "tsc --noEmit",
