@@ -11,11 +11,14 @@ export function proxy(req: NextRequest) {
     const origin = req.headers.get("origin");
     const host = req.headers.get("host");
     const site = req.headers.get("sec-fetch-site");
+    // Origens extras confiáveis (ex.: front na Vercel repassando /api ao Railway). Ex.: ALLOWED_ORIGINS=https://criso-app.vercel.app
+    const permitidas = (process.env.ALLOWED_ORIGINS ?? "").split(",").map((s) => s.trim().replace(/\/$/, "")).filter(Boolean);
     let ok = true;
     if (site && site !== "same-origin" && site !== "none") ok = false;
     if (origin && host) {
       try {
-        if (new URL(origin).host !== host) ok = false;
+        const o = new URL(origin);
+        if (o.host !== host && !permitidas.includes(o.origin)) ok = false;
       } catch {
         ok = false;
       }
