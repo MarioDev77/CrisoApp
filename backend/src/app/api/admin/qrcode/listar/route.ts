@@ -17,7 +17,7 @@ export const GET = api({ auth: ["admin"], query }, async ({ query }) => {
   if (query.status === "expirado") where = { status: "ativo", expiraEm: { lt: agora } };
   else if (query.status === "ativo") where = { status: "ativo", expiraEm: { gte: agora } };
   else if (query.status) where = { status: query.status };
-  const [total, lista, met, usados] = await Promise.all([
+  const [total, lista, met, alertasRaw] = await Promise.all([
     prisma().qrCode.count({ where }),
     prisma().qrCode.findMany({ where, orderBy: { criadoEm: "desc" }, skip: (query.pagina - 1) * query.por_pagina, take: query.por_pagina }),
     prisma().$queryRaw<{ ativos: number; usados: number; expirados: number; hoje: number }[]>`
@@ -26,14 +26,22 @@ export const GET = api({ auth: ["admin"], query }, async ({ query }) => {
              count(*) FILTER (WHERE status='expirado' OR (status='ativo' AND expira_em < now()))::int AS expirados,
              count(*) FILTER (WHERE (criado_em AT TIME ZONE ${tz()})::date = (now() AT TIME ZONE ${tz()})::date)::int AS hoje
       FROM qr_codes`,
-    prisma().qrCode.count({ where: { status: "usado" } }),
+    prisma().$queryRaw<{ categoria: string; alvo: string; usos: number; ip: string | null; data: Date }[]>`
+      WITH recentes AS (SELECT id_loja, id_cliente, ip_gerado, usado_em FROM qr_codes WHERE status='usado' AND usado_em >= now() - interval '15 minutes'),
+      alertas AS (
+        SELECT 'loja'::text categoria, id_loja::text alvo, count(*)::int usos, NULL::text ip, max(usado_em) data FROM recentes GROUP BY id_loja HAVING count(*) > 5
+        UNION ALL
+        SELECT 'cliente', id_cliente::text, count(*)::int, NULL::text, max(usado_em) FROM recentes WHERE id_cliente IS NOT NULL GROUP BY id_cliente HAVING count(*) > 5
+        UNION ALL
+        SELECT 'ip', ip_gerado, count(*)::int, ip_gerado, max(usado_em) FROM recentes WHERE ip_gerado IS NOT NULL AND ip_gerado <> '' GROUP BY ip_gerado HAVING count(*) > 5
+      ) SELECT * FROM alertas ORDER BY usos DESC LIMIT 20`,
   ]);
-  const alertas = usados > 5 ? [{ tipo: "Uso multiplo", descricao: `${usados} QR Codes ja foram utilizados`, ip: "127.0.0.1", data: agora.toISOString() }] : [];
+  const alertas = alertasRaw.map((a) => ({ tipo: `Uso múltiplo por ${a.categoria}`, descricao: `${a.usos} QR Codes usados nos últimos 15 minutos; identificador ${a.alvo}`, ip: a.ip, data: a.data.toISOString() }));
   return {
     total,
     metricas: { ativos: met[0].ativos, usados: met[0].usados, expirados: met[0].expirados, total_hoje: met[0].hoje },
     qrcodes: lista.map((q) => ({
-      token_preview: "..." + q.token.slice(-6), id_transacao: q.idTransacao, id_loja: q.idLoja, nome_loja: q.nomeLoja,
+      id_transacao: q.idTransacao, id_loja: q.idLoja, nome_loja: q.nomeLoja,
       valor: num(q.valor), criado_em: q.criadoEm, expira_em: q.expiraEm,
       status: q.expiraEm < agora && q.status === "ativo" ? "expirado" : q.status, usado_em: q.usadoEm,
     })),

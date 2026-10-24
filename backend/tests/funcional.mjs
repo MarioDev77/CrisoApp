@@ -17,12 +17,13 @@ const novoIp = () => `203.0.113.${ipSeq++}`;
 function sessao(ip = novoIp()) {
   const s = { cookie: '', ip };
   s.call = async (m, p, body, extra = {}) => {
-    const h = { 'Content-Type': 'application/json', 'X-Forwarded-For': s.ip, ...extra };
+    const h = { 'Content-Type': 'application/json', ...extra };
+    if (s.ip) h['X-Forwarded-For'] = s.ip;
     if (s.cookie) h.Cookie = s.cookie;
     const r = await fetch(B + p, { method: m, headers: h, body: (body === undefined || body === null) ? undefined : (typeof body === 'string' ? body : JSON.stringify(body)) });
     const sc = r.headers.getSetCookie?.() ?? [];
-    const c = sc.find(x => x.startsWith('crisoverde_session='));
-    if (c) s.cookie = c.split(';')[0].replace(/^crisoverde_session=$/, '') === '' ? '' : c.split(';')[0];
+    const c = sc.find(x => x.startsWith('__Host-crisoverde_session='));
+    if (c) s.cookie = c.split(';')[0].replace(/^__Host-crisoverde_session=$/, '') === '' ? '' : c.split(';')[0];
     let j = null; try { j = await r.json(); } catch {}
     return { s: r.status, j, h: r.headers, setCookie: sc };
   };
@@ -39,7 +40,7 @@ t('cabeçalhos de segurança presentes', r.h.get('x-frame-options') === 'DENY' &
 // --- admin: sessão por cookie HttpOnly
 const A = await login(ADMIN_EMAIL, ADMIN_SENHA);
 t('login admin 200', A.r.s === 200 && A.r.j?.perfil?.tipo === 'admin', `status ${A.r.s}`);
-const sc = A.r.setCookie.find(x => x.startsWith('crisoverde_session=')) || '';
+const sc = A.r.setCookie.find(x => x.startsWith('__Host-crisoverde_session=')) || '';
 t('cookie de sessão é HttpOnly + SameSite=Strict', /HttpOnly/i.test(sc) && /SameSite=Strict/i.test(sc), sc.replace(/=[^;]+/, '=…').slice(0, 90));
 t('token NÃO vem no corpo JSON (LEGACY_BEARER=false)', A.r.j && !('token' in A.r.j));
 t('id do admin é número', typeof A.r.j?.perfil?.id === 'number', `typeof=${typeof A.r.j?.perfil?.id}`);
@@ -54,6 +55,20 @@ r = await anon.call('POST', '/api/auth/login', { email: 'nao-e-email', senha: 'a
 const maria = sessao();
 r = await maria.call('POST', '/api/auth/cadastro', { nome: "Maria O'Neil", email: 'maria@email.com', senha: 'Senha1234', telefone: '11999' });
 t('cadastro cliente → 201', r.s === 201, `status ${r.s} ${r.j?.mensagem || ''}`);
+const loginSemIp = sessao(null);
+const sufixoLimite = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+let bloqueiosIpDesconhecido = 0;
+for (let i = 0; i < 70; i++) {
+  const tentativa = await loginSemIp.call('POST', '/api/auth/login', { email: `tentativa-${sufixoLimite}-${i}@example.test`, senha: 'SenhaIncorreta1' });
+  if (tentativa.s === 429) bloqueiosIpDesconhecido++;
+}
+t('70 logins com e-mails diferentes e IP desconhecido não ativam limite global', bloqueiosIpDesconhecido === 0, `429=${bloqueiosIpDesconhecido}`);
+const loginValidoSemIp = await loginSemIp.call('POST', '/api/auth/login', { email: 'maria@email.com', senha: 'Senha1234' });
+t('login válido continua aceito após 70 e-mails distintos sem IP', loginValidoSemIp.s === 200, `status ${loginValidoSemIp.s}`);
+const emailTentado = `repetido-${sufixoLimite}@example.test`;
+let ultimaTentativa;
+for (let i = 0; i < 11; i++) ultimaTentativa = await loginSemIp.call('POST', '/api/auth/login', { email: emailTentado, senha: 'SenhaIncorreta1' });
+t('11 tentativas para o mesmo e-mail e IP desconhecido → 429 com Retry-After', ultimaTentativa.s === 429 && /^\d+$/.test(ultimaTentativa.h.get('retry-after') || ''), `status ${ultimaTentativa.s} retry-after=${ultimaTentativa.h.get('retry-after')}`);
 r = await sessao().call('POST', '/api/auth/cadastro', { nome: 'Outra', email: 'MARIA@Email.com', senha: 'Senha1234' });
 t('e-mail duplicado com outra caixa → 400 (regressão corrigida)', r.s === 400, `status ${r.s}`);
 t('nome gravado SEM escape duplo de HTML', sql("select nome from usuarios where email='maria@email.com'") === "Maria O'Neil", sql("select nome from usuarios where email='maria@email.com'"));
@@ -97,7 +112,20 @@ r = await maria.call('GET', '/api/cliente/historico?tipo=xxx'); t('filtro invál
 r = await maria.call('GET', '/api/cliente/meu-qr'); const qd = r.j?.qr_data; t('meu-qr gera identificador', r.s === 200 && qd);
 r = await loja.call('POST', '/api/cliente/identificar', { qr_data: qd }); t('loja identifica cliente', r.s === 200 && r.j.nome === "Maria O'Neil" && r.j.id_cliente === mariaId, JSON.stringify(r.j));
 r = await loja.call('POST', '/api/cliente/identificar', { qr_data: qd.slice(0, -2) + 'zz' }); t('identificador adulterado → 400', r.s === 400);
-r = await loja.call('GET', '/api/loja/clientes/buscar?busca=O%27Neil'); t('busca por nome com apóstrofo funciona', r.s === 200 && r.j.usuarios.length === 1, `n=${r.j?.usuarios?.length}`);
+r = await loja.call('GET', '/api/loja/clientes/buscar?busca=Ma'); t('busca com menos de 3 caracteres retorna lista vazia', r.s === 200 && r.j.usuarios.length === 0, `n=${r.j?.usuarios?.length}`);
+r = await loja.call('GET', '/api/loja/clientes/buscar?busca=maria%40'); t('busca por parte de e-mail não encontra cliente', r.s === 200 && r.j.usuarios.length === 0, `n=${r.j?.usuarios?.length}`);
+r = await loja.call('GET', '/api/loja/clientes/buscar?busca=MARIA%40EMAIL.COM&limite=20');
+t('e-mail exato encontra cliente sem expor saldo/trocas', r.s === 200 && r.j.usuarios.length === 1 && r.j.usuarios[0].id === mariaId && !('saldo' in r.j.usuarios[0]) && !('total_trocas' in r.j.usuarios[0]), JSON.stringify(r.j));
+r = await loja.call('GET', '/api/loja/clientes/buscar?busca=O%27Neil'); t('busca por nome com apóstrofo (3+ caracteres) funciona sem dados de saldo', r.s === 200 && r.j.usuarios.length === 1 && !('saldo' in r.j.usuarios[0]), `n=${r.j?.usuarios?.length}`);
+const prefixBusca = `b${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+for (let i = 0; i < 6; i++) sql(`insert into usuarios(nome,email,senha,tipo,status) values ('Cliente ${prefixBusca} ${i}','${prefixBusca}${i}@example.test',NULL,'cliente','ativo')`);
+r = await loja.call('GET', `/api/loja/clientes/buscar?busca=${prefixBusca}&limite=20`);
+t('busca da loja retorna no máximo 5 resultados', r.s === 200 && r.j.usuarios.length === 5, `n=${r.j?.usuarios?.length}`);
+sql(`delete from usuarios where email like '${prefixBusca}%'`);
+for (let i = 0; i < 10; i++) r = await loja.call('GET', '/api/loja/clientes/buscar?busca=O%27Neil');
+t('busca pela loja permite 15 chamadas na janela', r.s === 200, `status ${r.s}`);
+r = await loja.call('GET', '/api/loja/clientes/buscar?busca=O%27Neil');
+t('16ª busca pela loja em 15 min → 429 com Retry-After', r.s === 429 && /^\d+$/.test(r.h.get('retry-after') || ''), `status ${r.s} retry-after=${r.h.get('retry-after')}`);
 
 // --- painel loja
 const mes = new Date().toISOString().slice(0, 7);

@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 
 const SEGUROS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 export function proxy(req: NextRequest) {
   const isApi = req.nextUrl.pathname.startsWith("/api/");
+
+  // Segredo opcional de origem para impedir acesso direto ao backend quando
+  // Vercel/Cloudflare estiverem configurados para anexá-lo ao encaminhar /api.
+  const originSecret = process.env.ORIGIN_SECRET;
+  if (isApi && req.nextUrl.pathname !== "/api/health" && originSecret) {
+    const recebido = req.headers.get("x-origin-secret") ?? "";
+    const a = Buffer.from(recebido);
+    const b = Buffer.from(originSecret);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      return NextResponse.json({ sucesso: false, mensagem: "Origem não permitida" }, { status: 403, headers: { "Cache-Control": "no-store" } });
+    }
+  }
 
   // CSRF: requisições que mudam estado só são aceitas de mesma origem.
   // (Defesa em profundidade além de cookie SameSite=Strict.)

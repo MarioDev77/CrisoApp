@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { HttpError, notFound } from "@/lib/errors";
 import { calcularCreditos, descricao, materiaisSchema } from "@/lib/materiais";
 import { configQr, taxasVigentes } from "@/lib/servicos";
+import { camposQrCode } from "@/lib/pii";
 
 const VALOR_MAXIMO_DEBITO = 100000;
 const body = z.object({
@@ -29,7 +30,7 @@ export const POST = api(
       if (v > VALOR_MAXIMO_DEBITO) throw new HttpError(400, "Valor de desconto muito alto");
       if (!body.produto) throw new HttpError(400, "Informe o produto/servico utilizado");
       const qr = await prisma().qrCode.create({
-        data: { token, idLoja: loja.id, nomeLoja: loja.nome, tipo: "debito", valor: Math.round(v * 100) / 100, materiaisDesc: body.produto, produto: body.produto, ipGerado: ip, expiraEm },
+        data: { token, ...camposQrCode(token, ip, { valor: Math.round(v * 100) / 100, materiaisDesc: body.produto, produto: body.produto }), idLoja: loja.id, nomeLoja: loja.nome, tipo: "debito", valor: Math.round(v * 100) / 100, materiaisDesc: body.produto, produto: body.produto, ipGerado: ip, expiraEm },
       });
       return { sucesso: true, token, id_transacao: qr.idTransacao, expira_em: expiraEm.toISOString() };
     }
@@ -39,7 +40,7 @@ export const POST = api(
     const valor = calcularCreditos(mat, await taxasVigentes());
     if (valor <= 0) throw new HttpError(400, "Quantidade insuficiente para gerar credito");
     const qr = await prisma().qrCode.create({
-      data: { token, idLoja: loja.id, nomeLoja: loja.nome, tipo: "credito", valor, materiais: mat, materiaisDesc: descricao(mat), ipGerado: ip, expiraEm },
+      data: { token, ...camposQrCode(token, ip, { valor, materiais: mat, materiaisDesc: descricao(mat), produto: null }), idLoja: loja.id, nomeLoja: loja.nome, tipo: "credito", valor, materiais: mat, materiaisDesc: descricao(mat), ipGerado: ip, expiraEm },
     });
     return { sucesso: true, token, id_transacao: qr.idTransacao, expira_em: expiraEm.toISOString() };
   },

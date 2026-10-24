@@ -3,12 +3,17 @@ import { prisma } from "@/lib/db";
 import { notFound } from "@/lib/errors";
 import { idParam } from "@/lib/schemas";
 import { auditar } from "@/lib/servicos";
+import { camposEmailUsuario, camposTelefoneUsuario } from "@/lib/pii";
 
 export const DELETE = api<unknown, unknown, { id: string }>({ auth: ["admin"] }, async ({ usuario, params, ip }) => {
   const id = idParam.parse(params.id);
-  const r = await prisma().usuario.updateMany({
-    where: { id, tipo: "cliente", deletadoEm: null },
-    data: { status: "inativo", deletadoEm: new Date(), deletadoPorId: usuario.id, versaoSessao: { increment: 1 } },
+  const r = await prisma().$transaction(async (tx) => {
+    const alterado = await tx.usuario.updateMany({
+      where: { id, tipo: "cliente", deletadoEm: null },
+      data: { ...camposEmailUsuario(`excluido-${id}@invalid`), ...camposTelefoneUsuario(""), nome: "Removido", googleId: null, googleIdHash: null, status: "inativo", deletadoEm: new Date(), deletadoPorId: usuario.id, versaoSessao: { increment: 1 } },
+    });
+    if (alterado.count) await tx.transacao.updateMany({ where: { idCliente: id }, data: { nomeCliente: null, nomeClienteEnc: null } });
+    return alterado;
   });
   if (r.count === 0) throw notFound("Usuario nao encontrado");
   await auditar("admin_deletou_usuario", `usuario_id=${id}`, ip, usuario.id);

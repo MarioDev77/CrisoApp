@@ -5,6 +5,7 @@ import { emitirResetToken, hashCodigo } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { HttpError } from "@/lib/errors";
 import { email } from "@/lib/schemas";
+import { buscarUsuarioPorEmail } from "@/lib/pii";
 
 const MAX_TENTATIVAS = 5;
 const body = z.object({ email, codigo: z.string({ error: "Informe o e-mail e o código recebido." }).trim().regex(/^\d{6}$/, "Código incorreto.") });
@@ -14,9 +15,11 @@ export const POST = api(
   { auth: false, body, limites: [
     { nome: "reset-ip", por: "ip", max: 60, janelaSeg: 900 },
     { nome: "reset-codigo", por: "ip+email", max: 10, janelaSeg: 900, msg: "Muitas tentativas. Tente novamente em 15 minutos." },
+    { nome: "reset-email", por: "email", max: 10, janelaSeg: 900, msg: "Muitas tentativas. Tente novamente em 15 minutos." },
   ] },
   async ({ body }) => {
-    const u = await prisma().usuario.findFirst({ where: { email: body.email, deletadoEm: null } });
+    const encontrado = await buscarUsuarioPorEmail(prisma(), body.email);
+    const u = encontrado && !encontrado.deletadoEm && encontrado.tipo !== "admin" ? encontrado : null;
     if (!u) throw new HttpError(400, "Código inválido ou expirado.");
     const reg = await prisma().passwordResetCode.findFirst({ where: { usuarioId: u.id, utilizado: false }, orderBy: { criadoEm: "desc" } });
     if (!reg) throw new HttpError(400, "Código inválido ou expirado.");

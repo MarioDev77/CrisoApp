@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError, type ZodType } from "zod";
-import { autenticar, exigir, type Perfil, type Principal } from "./auth";
+import { adminMfaValidado, autenticar, exigir, type Perfil, type Principal } from "./auth";
 import { HttpError } from "./errors";
 import { limitar, type Regra } from "./rate-limit";
 import { clientIp } from "./client-ip";
@@ -8,7 +8,7 @@ import { log } from "./log";
 
 const MAX_BODY = 10 * 1024;
 
-type Chave = "ip" | "usuario" | "ip+email";
+type Chave = "ip" | "usuario" | "ip+email" | "email";
 export type Opcoes<B, Q> = {
   /** false = pública. Lista = perfis permitidos. */
   auth: false | Perfil[];
@@ -24,8 +24,25 @@ const json = (status: number, corpo: unknown, headers?: HeadersInit) =>
 async function lerCorpo(req: NextRequest): Promise<unknown> {
   const len = Number(req.headers.get("content-length") ?? 0);
   if (len > MAX_BODY) throw new HttpError(413, "Corpo da requisição muito grande");
-  const txt = await req.text();
-  if (Buffer.byteLength(txt) > MAX_BODY) throw new HttpError(413, "Corpo da requisição muito grande");
+  if (!req.body) return {};
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_BODY) {
+        await reader.cancel();
+        throw new HttpError(413, "Corpo da requisição muito grande");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const txt = new TextDecoder().decode(Buffer.concat(chunks));
   if (!txt.trim()) return {};
   try {
     return JSON.parse(txt);
@@ -33,6 +50,8 @@ async function lerCorpo(req: NextRequest): Promise<unknown> {
     throw new HttpError(400, "JSON inválido");
   }
 }
+
+export const deveAplicarLimiteIp = (ip: string) => ip !== "desconhecido";
 
 export function api<B = unknown, Q = unknown, P = Record<string, string>>(
   opts: Opcoes<B, Q>,
@@ -45,10 +64,14 @@ export function api<B = unknown, Q = unknown, P = Record<string, string>>(
     try {
       const ip = clientIp(req.headers);
       // 1) limite por IP antes de qualquer trabalho caro
-      for (const l of opts.limites ?? []) if (l.por === "ip") await limitar(l, ip);
+      for (const l of opts.limites ?? []) {
+        if (l.por === "ip" && deveAplicarLimiteIp(ip)) await limitar(l, ip);
+      }
 
       const usuario = opts.auth ? await autenticar(req) : (null as unknown as Principal);
       if (opts.auth) exigir(usuario, ...opts.auth);
+      const rotaSetupMfa = /^\/api\/auth\/admin-mfa\/(?:setup|confirm)$/.test(req.nextUrl.pathname);
+      if (usuario?.tipo === "admin" && !adminMfaValidado(usuario) && !rotaSetupMfa) throw new HttpError(403, "Conclua a configuração do segundo fator antes de acessar a administração.");
 
       let body = undefined as B;
       if (opts.body) {
@@ -64,6 +87,10 @@ export function api<B = unknown, Q = unknown, P = Record<string, string>>(
         if (l.por === "ip+email") {
           const email = String((body as { email?: string } | undefined)?.email ?? "").toLowerCase();
           await limitar(l, `${ip}|${email}`);
+        }
+        if (l.por === "email") {
+          const email = String((body as { email?: string } | undefined)?.email ?? "").trim().toLowerCase();
+          if (email) await limitar(l, email, true);
         }
       }
 

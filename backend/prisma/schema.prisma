@@ -44,10 +44,14 @@ model Usuario {
   id                Int             @id @default(autoincrement())
   nome              String          @db.VarChar(255)
   email             String          @unique @db.VarChar(255) // sempre minúsculo (CHECK no banco)
+  emailEnc          String?         @map("email_enc") @db.Text
+  emailHash         String?         @map("email_hash") @db.VarChar(64)
   senha             String?         @db.VarChar(255)
   tipo              UsuarioTipo     @default(cliente)
   status            UsuarioStatus   @default(ativo)
   telefone          String          @default("") @db.VarChar(50)
+  telefoneEnc       String?         @map("telefone_enc") @db.Text
+  telefoneHash      String?         @map("telefone_hash") @db.VarChar(64)
   saldo             Decimal         @default(0) @db.Decimal(10, 2)
   totalGanho        Decimal         @default(0) @map("total_ganho") @db.Decimal(10, 2)
   totalUtilizado    Decimal         @default(0) @map("total_utilizado") @db.Decimal(10, 2)
@@ -55,6 +59,7 @@ model Usuario {
   totalTrocas       Int             @default(0) @map("total_trocas")
   provider          UsuarioProvider @default(local)
   googleId          String?         @unique @map("google_id") @db.VarChar(255)
+  googleIdHash      String?         @unique @map("google_id_hash") @db.VarChar(64)
   foto              String?         @db.VarChar(500)
   emailVerificado   Boolean         @default(false) @map("email_verificado")
   ultimoLogin       DateTime?       @map("ultimo_login") @db.Timestamptz
@@ -71,6 +76,8 @@ model Usuario {
   qrCodes      QrCode[]
   logs         LogAuditoria[]
   resetCodes   PasswordResetCode[]
+  verificationCodes EmailVerificationCode[]
+  resgates      Resgate[]
 
   @@index([status])
   @@index([tipo, criadoEm])
@@ -81,9 +88,15 @@ model Loja {
   id            Int        @id @default(autoincrement())
   nome          String     @db.VarChar(255)
   responsavel   String     @db.VarChar(255)
+  responsavelEnc String?   @map("responsavel_enc") @db.Text
   email         String     @unique @db.VarChar(255)
+  emailEnc      String?    @map("email_enc") @db.Text
+  emailHash     String?    @map("email_hash") @db.VarChar(64)
   telefone      String     @default("") @db.VarChar(50)
+  telefoneEnc   String?    @map("telefone_enc") @db.Text
+  telefoneHash  String?    @map("telefone_hash") @db.VarChar(64)
   endereco      String?
+  enderecoEnc   String?    @map("endereco_enc") @db.Text
   senha         String     @db.VarChar(255)
   status        LojaStatus @default(pendente)
   versaoSessao  Int        @default(0) @map("versao_sessao")
@@ -103,6 +116,7 @@ model Transacao {
   idCliente     Int?          @map("id_cliente")
   cliente       Usuario?      @relation(fields: [idCliente], references: [id], onDelete: SetNull)
   nomeCliente   String?       @map("nome_cliente") @db.VarChar(255)
+  nomeClienteEnc String?      @map("nome_cliente_enc") @db.Text
   idLoja        Int?          @map("id_loja")
   loja          Loja?         @relation(fields: [idLoja], references: [id], onDelete: SetNull)
   nomeLoja      String?       @map("nome_loja") @db.VarChar(255)
@@ -124,6 +138,7 @@ model Transacao {
 
 model QrCode {
   token         String        @id @db.VarChar(255)
+  tokenHash     String?       @unique @map("token_hash") @db.VarChar(64)
   idTransacao   Int           @unique @default(autoincrement()) @map("id_transacao")
   idLoja        Int           @map("id_loja")
   loja          Loja          @relation(fields: [idLoja], references: [id], onDelete: Cascade)
@@ -135,6 +150,8 @@ model QrCode {
   produto       String?       @db.VarChar(255)
   status        QrStatus      @default(ativo)
   ipGerado      String?       @map("ip_gerado") @db.VarChar(64)
+  ipEnc         String?       @map("ip_enc") @db.Text
+  dadosEnc      String?       @map("dados_enc") @db.Text
   criadoEm      DateTime      @default(now()) @map("criado_em") @db.Timestamptz
   expiraEm      DateTime      @map("expira_em") @db.Timestamptz
   usadoEm       DateTime?     @map("usado_em") @db.Timestamptz
@@ -161,11 +178,46 @@ model LogAuditoria {
   acao      String?  @db.VarChar(100)
   detalhe   String?
   ip        String?  @db.VarChar(64)
+  ipEnc     String?  @map("ip_enc") @db.Text
   criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz
 
   @@index([acao])
   @@index([criadoEm])
   @@map("logs_auditoria")
+}
+
+model AdminMfa {
+  usuarioId      Int      @id @map("usuario_id")
+  segredoEnc     String   @map("segredo_enc") @db.Text
+  habilitado     Boolean  @default(false)
+  recoveryHashes String[] @default([]) @map("recovery_hashes")
+  criadoEm       DateTime @default(now()) @map("criado_em") @db.Timestamptz
+  atualizadoEm   DateTime @updatedAt @map("atualizado_em") @db.Timestamptz
+
+  @@map("admin_mfa")
+}
+
+enum ResgateStatus {
+  pendente
+  aprovado
+  pago
+  cancelado
+}
+
+model Resgate {
+  id        Int           @id @default(autoincrement())
+  idCliente Int           @map("id_cliente")
+  cliente   Usuario       @relation(fields: [idCliente], references: [id], onDelete: Restrict)
+  idTransacao Int?        @unique @map("id_transacao")
+  valor     Decimal       @db.Decimal(10, 2)
+  forma     String        @db.VarChar(20)
+  status    ResgateStatus @default(pendente)
+  criadoEm  DateTime      @default(now()) @map("criado_em") @db.Timestamptz
+  atualizadoEm DateTime   @updatedAt @map("atualizado_em") @db.Timestamptz
+
+  @@index([idCliente, criadoEm])
+  @@index([status, criadoEm])
+  @@map("resgates")
 }
 
 model PasswordResetCode {
@@ -180,6 +232,20 @@ model PasswordResetCode {
 
   @@index([usuarioId])
   @@map("password_reset_codes")
+}
+
+model EmailVerificationCode {
+  id         Int      @id @default(autoincrement())
+  usuarioId  Int      @map("usuario_id")
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  codigoHash String   @map("codigo_hash") @db.VarChar(255)
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz
+  expiraEm   DateTime @map("expira_em") @db.Timestamptz
+  tentativas Int      @default(0)
+  utilizado  Boolean  @default(false)
+
+  @@index([usuarioId, criadoEm])
+  @@map("email_verification_codes")
 }
 
 // Contadores para rate limiting distribuído (compartilhado entre instâncias via PostgreSQL).

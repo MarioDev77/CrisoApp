@@ -4,7 +4,7 @@ import { env } from "./env";
 
 export async function respostaComSessao(
   corpo: Record<string, unknown>,
-  p: { id: number; tipo: Perfil; versao: number },
+  p: { id: number; tipo: Perfil; versao: number; mfa?: boolean },
   status = 200,
 ) {
   const token = await emitirSessao(p);
