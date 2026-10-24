@@ -29,7 +29,7 @@ Todas são intencionais (correção de falhas encontradas na auditoria). **Confi
 
 ## MFA para todas as contas (cliente, loja e admin)
 
-- `MFA_ESCOPO=todos` (padrão) exige segundo fator (TOTP) de todos; `MFA_ESCOPO=admin` volta a exigir só dos administradores (útil para liberar aos poucos).
+- `MFA_ESCOPO=admin_loja` (padrão) exige segundo fator (TOTP) de administradores e lojas; `MFA_ESCOPO=admin` exige só dos administradores; `MFA_ESCOPO=todos` inclui os clientes.
 - Primeiro login sem MFA: a sessão fica restrita à tela `/mfa` (copiar chave, abrir no app autenticador, confirmar código e guardar os códigos de recuperação). No celular o redirecionamento vai direto para `/mfa/celular`.
 - Login com senha, de loja e com Google passam a pedir o código quando o MFA já está ativo. Sessões antigas (sem MFA validado) caem no login de novo.
 - Tabelas `mfa_contas` e `mfa_codigos` (um código de recuperação por linha, cifrado) são criadas pela migração `20261026000000_mfa_todas_as_contas`, que roda sozinha no deploy e copia os dados de `admin_mfa`/`admin_mfa_codigos`. As tabelas antigas ficam intactas e podem ser apagadas depois.

@@ -49,5 +49,12 @@ export function novosCodigosRecuperacao() {
 export const cifrarCodigoRecuperacao = (code: string) => cifrar(code, "admin_mfa_codigos.codigo");
 export const decifrarCodigoRecuperacao = (blob: string) => decifrar(blob, "admin_mfa_codigos.codigo");
 
-/** Admin sempre precisa de MFA; cliente e loja só quando MFA_ESCOPO=todos (padrão). */
-export const mfaObrigatorio = (tipoPerfil: string) => tipoPerfil === "admin" || env().MFA_ESCOPO === "todos";
+/**
+ * Admin sempre precisa de MFA. Loja precisa em "admin_loja" (padrão) e "todos". Cliente só em "todos".
+ * Quem já ativou o MFA por conta própria continua sendo cobrado do código no login, seja qual for o escopo.
+ */
+export const mfaObrigatorio = (tipoPerfil: string) => {
+  const escopo = env().MFA_ESCOPO;
+  if (tipoPerfil === "admin" || escopo === "todos") return true;
+  return tipoPerfil === "loja" && escopo === "admin_loja";
+};

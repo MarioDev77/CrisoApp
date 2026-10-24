@@ -12,7 +12,7 @@ const schema = z.object({
   DATA_ENCRYPTION_KEYS: z.string().default(""),
   BLIND_INDEX_KEY: z.string().default(""),
   // "todos" (padrão): MFA obrigatório para cliente, loja e admin. "admin": só administradores (útil para liberar aos poucos).
-  MFA_ESCOPO: z.enum(["admin", "todos"]).default("todos"),
+  MFA_ESCOPO: z.enum(["admin", "admin_loja", "todos"]).default("admin_loja"),
   ORIGIN_SECRET: z.string().min(32).optional(),
   CRON_SECRET: z.string().min(32).optional(),
   ADMIN_EMAIL: z.string().optional(),
