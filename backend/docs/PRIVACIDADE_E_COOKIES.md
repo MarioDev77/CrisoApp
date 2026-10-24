@@ -1,21 +1,20 @@
 # Privacidade e cookies
 
-## Implementação na interface
+## Como funciona (frontend/src/App.tsx)
 
-- Banner com escolhas para configurar, rejeitar cookies opcionais e aceitar preferências opcionais.
-- Preferências são guardadas no cookie cv_cookie_consent por até 180 dias (SameSite=Lax e Secure quando HTTPS).
-- A sessão de autenticação continua no cookie crisoverde_session, criada pelo backend como HttpOnly e SameSite=Strict; a UI não lê nem armazena a sessão.
-- Cookies essenciais continuam ativos. O código atual não inclui analytics nem marketing; aceitar essas categorias registra a preferência, mas não liga integrações inexistentes.
-- As preferências podem ser abertas em qualquer tela e também na página /privacidade.
+- **Cookies necessários** (não dependem de consentimento):
+  - `__Host-crisoverde_session` (em desenvolvimento: `crisoverde_session`): criado pelo backend, HttpOnly, Secure, SameSite=Strict, 8 horas.
+  - `cv_cookie_consent`: guarda a escolha da pessoa, 180 dias, SameSite=Lax, Secure em HTTPS. Formato: `{ v: 2, google: boolean, updatedAt }`. Cookies de versões antigas (sem `v: 2`) são ignorados e o aviso volta a aparecer.
+- **Única categoria opcional real: login com Google.** O script `accounts.google.com/gsi/client` só é carregado se `google: true`. Sem consentimento, a tela de login mostra o botão "Ativar login com Google". Ao retirar o consentimento o cookie `g_state` é apagado e a página recarrega para descarregar o script.
+- `GOOGLE_LOGIN_ATIVO` (topo do `App.tsx`) está `false`. Enquanto estiver assim, o aviso é só informativo ("Entendi"), a política não lista cookies do Google e nenhum script de terceiros é carregado. Ao ligar a flag, banner, modal e política passam a mostrar a opção do Google sozinhos.
+- Não há analytics, marketing nem armazenamento de sessão em localStorage/sessionStorage. Se algum dia for adicionado, criar uma nova categoria em `CookiePrefs`, subir a versão (`v`) e só carregar o script depois do consentimento.
+- As preferências abrem pelo rodapé do app, pelo banner e pelo botão no fim da página `/privacidade`.
 
-## Informações de política
+## Página /privacidade
 
-A página /privacidade descreve os dados e as finalidades técnicas observáveis no código, sem alegar fornecedores ou bases legais não confirmados. Antes da publicação final, preencher e revisar:
+Versão 2.0 (24/10/2026). Cobre: quem trata os dados, dados coletados, finalidades e bases legais (LGPD art. 7º), tabela de cookies, compartilhamento (Vercel, Railway, Resend, Google, lojas parceiras), retenção, segurança, direitos (art. 18), crianças e adolescentes e mudanças.
 
-- nome/razão social, CNPJ, endereço e contato de privacidade;
-- bases legais por finalidade;
-- fornecedores ativos, compartilhamentos e transferências internacionais;
-- prazos de retenção, backups e processo de eliminação;
-- processo de atendimento dos direitos dos titulares e responsável pela revisão jurídica.
-
-A página está acessível, mas os campos marcados [PREENCHER] significam que a política ainda requer aprovação do controlador e revisão jurídica.
+- O canal de privacidade vem da variável do frontend `VITE_CONTATO_PRIVACIDADE` (e-mail ou URL). Sem ela, a página manda falar com a equipe pelos canais da iniciativa. **Defina antes de publicar.**
+- Prazos de retenção refletem o código: rate limit 1 h, QR usado/expirado 30 dias, auditoria 12 meses (`/api/cron/maintenance`), sessão 8 h. O cron precisa estar agendado com `CRON_SECRET`.
+- Ao mudar o que o app coleta, usa ou compartilha, atualizar a página e `POLICY_VERSION`/`POLICY_DATE`.
+- Texto não substitui revisão jurídica.

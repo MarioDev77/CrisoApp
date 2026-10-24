@@ -124,3 +124,4 @@
 .recovery-codes li.used{opacity:.55}.recovery-codes li.used code{text-decoration:line-through}.recovery-codes small{color:#8a9890;font-size:.68rem}
 .qr-center code{user-select:all;overflow-wrap:anywhere}
 @media(max-width:420px){.recovery-codes{grid-template-columns:1fr}}
+.legal-table-wrap{overflow-x:auto;margin:14px 0}.legal-table{width:100%;border-collapse:collapse;font-size:.82rem}.legal-table th,.legal-table td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--border)}.legal-table th{font-weight:700;color:var(--muted);font-size:.74rem;text-transform:uppercase;letter-spacing:.03em}.legal-table code{word-break:break-all}
