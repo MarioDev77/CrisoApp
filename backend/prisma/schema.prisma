@@ -186,15 +186,38 @@ model LogAuditoria {
   @@map("logs_auditoria")
 }
 
-model AdminMfa {
-  usuarioId      Int      @id @map("usuario_id")
+// Segundo fator (TOTP) de qualquer conta: conta_tipo = "usuario" (cliente/admin, tabela usuarios) ou "loja".
+// O segredo fica cifrado (AES-256-GCM). As tabelas antigas admin_mfa/admin_mfa_codigos foram copiadas para cá
+// pela migração 20261026000000 e não são mais usadas.
+model MfaConta {
+  id             Int      @id @default(autoincrement())
+  contaTipo      String   @map("conta_tipo") @db.VarChar(10)
+  contaId        Int      @map("conta_id")
   segredoEnc     String   @map("segredo_enc") @db.Text
   habilitado     Boolean  @default(false)
   recoveryHashes String[] @default([]) @map("recovery_hashes")
   criadoEm       DateTime @default(now()) @map("criado_em") @db.Timestamptz
   atualizadoEm   DateTime @updatedAt @map("atualizado_em") @db.Timestamptz
+  codigos        MfaCodigo[]
 
-  @@map("admin_mfa")
+  @@unique([contaTipo, contaId])
+  @@map("mfa_contas")
+}
+
+// Cada código de recuperação numa linha: texto cifrado (reversível, para rever na tela de segurança)
+// e hash HMAC só para validar no login.
+model MfaCodigo {
+  id         Int       @id @default(autoincrement())
+  mfaId      Int       @map("mfa_id")
+  mfa        MfaConta  @relation(fields: [mfaId], references: [id], onDelete: Cascade)
+  codigoEnc  String    @map("codigo_enc") @db.Text
+  codigoHash String    @map("codigo_hash") @db.VarChar(64)
+  usadoEm    DateTime? @map("usado_em") @db.Timestamptz
+  criadoEm   DateTime  @default(now()) @map("criado_em") @db.Timestamptz
+
+  @@unique([mfaId, codigoHash])
+  @@index([mfaId, usadoEm])
+  @@map("mfa_codigos")
 }
 
 enum ResgateStatus {

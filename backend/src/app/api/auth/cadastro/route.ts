@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { HttpError } from "@/lib/errors";
 import { email, senhaNova, telefoneSchema } from "@/lib/schemas";
 import { respostaComSessao } from "@/lib/sessao";
+import { mfaObrigatorio } from "@/lib/mfa";
 import { Prisma } from "@/generated/prisma/client";
 import { buscarLojaPorEmail, buscarUsuarioPorEmail, camposEmailUsuario, camposTelefoneUsuario } from "@/lib/pii";
 
@@ -33,7 +34,7 @@ export const POST = api(
         data: { nome: body.nome, ...camposEmailUsuario(body.email), senha, ...camposTelefoneUsuario(body.telefone), tipo: "cliente", status: "ativo" },
       });
       return respostaComSessao(
-        { sucesso: true, perfil: { id: novo.id, nome: novo.nome, email: novo.email, tipo: "cliente" } },
+        { sucesso: true, perfil: { id: novo.id, nome: novo.nome, email: novo.email, tipo: "cliente" }, ...(mfaObrigatorio("cliente") ? { mfa_setup_required: true } : {}) },
         { id: novo.id, tipo: "cliente", versao: novo.versaoSessao },
         201,
       );

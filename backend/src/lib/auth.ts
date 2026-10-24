@@ -10,17 +10,17 @@ import { emailDaLoja, emailDoUsuario } from "./pii";
 export type Perfil = "cliente" | "admin" | "loja";
 export type Principal = { id: number; tipo: Perfil; nome: string; email: string };
 const AUTH_IAT = Symbol("auth_iat");
-const ADMIN_MFA_OK = Symbol("admin_mfa_ok");
+const MFA_OK = Symbol("mfa_ok");
 function principalComEmissao(p: Principal, iat: number, mfaOk = false): Principal {
   Object.defineProperty(p, AUTH_IAT, { value: iat, enumerable: false });
-  Object.defineProperty(p, ADMIN_MFA_OK, { value: mfaOk, enumerable: false });
+  Object.defineProperty(p, MFA_OK, { value: mfaOk, enumerable: false });
   return p;
 }
 export function sessaoAutenticadaRecentemente(p: Principal, maxSegundos = 300) {
   const emitido = (p as Principal & { [AUTH_IAT]?: number })[AUTH_IAT];
   return typeof emitido === "number" && Date.now() / 1000 - emitido <= maxSegundos;
 }
-export const adminMfaValidado = (p: Principal) => Boolean((p as Principal & { [ADMIN_MFA_OK]?: boolean })[ADMIN_MFA_OK]);
+export const mfaValidado = (p: Principal) => Boolean((p as Principal & { [MFA_OK]?: boolean })[MFA_OK]);
 
 // The __Host- prefix requires Secure=true, including on localhost. Use a
 // development-only name so browsers accept the intentionally non-Secure cookie.

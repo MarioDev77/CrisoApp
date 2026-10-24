@@ -44,3 +44,10 @@ export function novosCodigosRecuperacao() {
   const codes = Array.from({ length: 8 }, () => crypto.randomBytes(6).toString("hex").toUpperCase());
   return { codes, hashes: codes.map(hashRecoveryCode) };
 }
+
+// --- Códigos de recuperação guardados um a um (texto cifrado + hash para validação)
+export const cifrarCodigoRecuperacao = (code: string) => cifrar(code, "admin_mfa_codigos.codigo");
+export const decifrarCodigoRecuperacao = (blob: string) => decifrar(blob, "admin_mfa_codigos.codigo");
+
+/** Admin sempre precisa de MFA; cliente e loja só quando MFA_ESCOPO=todos (padrão). */
+export const mfaObrigatorio = (tipoPerfil: string) => tipoPerfil === "admin" || env().MFA_ESCOPO === "todos";

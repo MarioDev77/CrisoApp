@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError, type ZodType } from "zod";
-import { adminMfaValidado, autenticar, exigir, type Perfil, type Principal } from "./auth";
+import { mfaValidado, autenticar, exigir, type Perfil, type Principal } from "./auth";
 import { HttpError } from "./errors";
+import { mfaObrigatorio } from "./mfa";
 import { limitar, type Regra } from "./rate-limit";
 import { clientIp } from "./client-ip";
 import { log } from "./log";
@@ -70,8 +71,9 @@ export function api<B = unknown, Q = unknown, P = Record<string, string>>(
 
       const usuario = opts.auth ? await autenticar(req) : (null as unknown as Principal);
       if (opts.auth) exigir(usuario, ...opts.auth);
-      const rotaSetupMfa = /^\/api\/auth\/admin-mfa\/(?:setup|confirm)$/.test(req.nextUrl.pathname);
-      if (usuario?.tipo === "admin" && !adminMfaValidado(usuario) && !rotaSetupMfa) throw new HttpError(403, "Conclua a configuração do segundo fator antes de acessar a administração.");
+      // Sessão sem MFA validado só alcança a configuração do segundo fator (e sair da conta).
+      const rotaLivreSemMfa = /^\/api\/auth\/(?:mfa\/(?:setup|confirm)|logout)$/.test(req.nextUrl.pathname);
+      if (usuario && mfaObrigatorio(usuario.tipo) && !mfaValidado(usuario) && !rotaLivreSemMfa) throw new HttpError(403, "Conclua a configuração do segundo fator antes de continuar.", { mfa_setup_required: true });
 
       let body = undefined as B;
       if (opts.body) {

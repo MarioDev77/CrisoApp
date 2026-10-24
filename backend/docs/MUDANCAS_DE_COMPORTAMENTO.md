@@ -26,3 +26,13 @@ Todas são intencionais (correção de falhas encontradas na auditoria). **Confi
 | 20 | Resgate exige sessão autenticada nos últimos 5 minutos e tem teto de R$ 100/dia | Protege operações financeiras; pode exigir novo login |
 | 21 | Crédito limita R$ 300 por loja/dia e R$ 150 por cliente/dia; crédito fica em carência por 24 h | Tetos definidos com o usuário; prazos e cancelamentos precisam de homologação |
 | 22 | Resposta de resgate inclui `status` e `id_resgate` | Mudança intencional do contrato deste endpoint para representar aprovação/pagamento/cancelamento |
+
+## MFA para todas as contas (cliente, loja e admin)
+
+- `MFA_ESCOPO=todos` (padrão) exige segundo fator (TOTP) de todos; `MFA_ESCOPO=admin` volta a exigir só dos administradores (útil para liberar aos poucos).
+- Primeiro login sem MFA: a sessão fica restrita à tela `/mfa` (copiar chave, abrir no app autenticador, confirmar código e guardar os códigos de recuperação). No celular o redirecionamento vai direto para `/mfa/celular`.
+- Login com senha, de loja e com Google passam a pedir o código quando o MFA já está ativo. Sessões antigas (sem MFA validado) caem no login de novo.
+- Tabelas `mfa_contas` e `mfa_codigos` (um código de recuperação por linha, cifrado) são criadas pela migração `20261026000000_mfa_todas_as_contas`, que roda sozinha no deploy e copia os dados de `admin_mfa`/`admin_mfa_codigos`. As tabelas antigas ficam intactas e podem ser apagadas depois.
+- Rotas renomeadas: `/api/auth/admin-mfa/*` → `/api/auth/mfa/*`; `/admin-mfa` → `/mfa` (o caminho antigo redireciona).
+- Quem perdeu o celular e os códigos: o admin usa "Resetar MFA" em Usuários ou Lojas parceiras (pede a senha do admin, encerra as sessões da conta e registra na auditoria).
+- `tests/funcional.mjs` loga como cliente/admin sem código MFA e precisa ser ajustado (ou rodar com `MFA_ESCOPO=admin` e um admin já com MFA).
