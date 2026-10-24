@@ -1,6 +1,6 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
-  "build": { "builder": "NIXPACKS", "buildCommand": "npm ci && npm run build" },
+  "build": { "builder": "NIXPACKS", "buildCommand": "npm run build" },
   "deploy": {
     "preDeployCommand": "npm run db:migrate:deploy",
     "startCommand": "npm run start",
