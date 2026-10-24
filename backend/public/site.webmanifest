@@ -1,0 +1,16 @@
+{
+  "name": "CrisoApp — CrisoVerde",
+  "short_name": "CrisoApp",
+  "description": "Sustentabilidade que gera recompensas.",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#02420c",
+  "theme_color": "#0c2013",
+  "icons": [
+    { "src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/maskable-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
