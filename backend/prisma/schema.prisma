@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UsuarioTipo {
+  cliente
+  admin
+}
+enum UsuarioStatus {
+  ativo
+  bloqueado
+  inativo
+}
+enum UsuarioProvider {
+  local
+  google
+}
+enum LojaStatus {
+  ativo
+  pendente
+  inativo
+}
+enum TransacaoTipo {
+  credito
+  debito
+}
+enum TransacaoCat {
+  reciclagem
+  resgate
+}
+enum QrStatus {
+  ativo
+  usado
+  expirado
+  invalido
+}
+
+model Usuario {
+  id                Int             @id @default(autoincrement())
+  nome              String          @db.VarChar(255)
+  email             String          @unique @db.VarChar(255) // sempre minúsculo (CHECK no banco)
+  senha             String?         @db.VarChar(255)
+  tipo              UsuarioTipo     @default(cliente)
+  status            UsuarioStatus   @default(ativo)
+  telefone          String          @default("") @db.VarChar(50)
+  saldo             Decimal         @default(0) @db.Decimal(10, 2)
+  totalGanho        Decimal         @default(0) @map("total_ganho") @db.Decimal(10, 2)
+  totalUtilizado    Decimal         @default(0) @map("total_utilizado") @db.Decimal(10, 2)
+  totalRecicladoKg  Decimal         @default(0) @map("total_reciclado_kg") @db.Decimal(10, 2)
+  totalTrocas       Int             @default(0) @map("total_trocas")
+  provider          UsuarioProvider @default(local)
+  googleId          String?         @unique @map("google_id") @db.VarChar(255)
+  foto              String?         @db.VarChar(500)
+  emailVerificado   Boolean         @default(false) @map("email_verificado")
+  ultimoLogin       DateTime?       @map("ultimo_login") @db.Timestamptz
+  // Incrementado a cada bloqueio/exclusão/troca de senha: invalida JWTs antigos.
+  versaoSessao      Int             @default(0) @map("versao_sessao")
+  deletadoEm        DateTime?       @map("deletado_em") @db.Timestamptz
+  deletadoPorId     Int?            @map("deletado_por")
+  deletadoPor       Usuario?        @relation("UsuarioDeletadoPor", fields: [deletadoPorId], references: [id], onDelete: SetNull)
+  deletados         Usuario[]       @relation("UsuarioDeletadoPor")
+  lojasDeletadas    Loja[]          @relation("LojaDeletadaPor")
+  criadoEm          DateTime        @default(now()) @map("criado_em") @db.Timestamptz
+
+  transacoes   Transacao[]
+  qrCodes      QrCode[]
+  logs         LogAuditoria[]
+  resetCodes   PasswordResetCode[]
+
+  @@index([status])
+  @@index([tipo, criadoEm])
+  @@map("usuarios")
+}
+
+model Loja {
+  id            Int        @id @default(autoincrement())
+  nome          String     @db.VarChar(255)
+  responsavel   String     @db.VarChar(255)
+  email         String     @unique @db.VarChar(255)
+  telefone      String     @default("") @db.VarChar(50)
+  endereco      String?
+  senha         String     @db.VarChar(255)
+  status        LojaStatus @default(pendente)
+  versaoSessao  Int        @default(0) @map("versao_sessao")
+  deletadoEm    DateTime?  @map("deletado_em") @db.Timestamptz
+  deletadoPorId Int?       @map("deletado_por")
+  deletadoPor   Usuario?   @relation("LojaDeletadaPor", fields: [deletadoPorId], references: [id], onDelete: SetNull)
+  criadoEm      DateTime   @default(now()) @map("criado_em") @db.Timestamptz
+
+  transacoes Transacao[]
+  qrCodes    QrCode[]
+
+  @@map("lojas")
+}
+
+model Transacao {
+  id            Int           @id @default(autoincrement())
+  idCliente     Int?          @map("id_cliente")
+  cliente       Usuario?      @relation(fields: [idCliente], references: [id], onDelete: SetNull)
+  nomeCliente   String?       @map("nome_cliente") @db.VarChar(255)
+  idLoja        Int?          @map("id_loja")
+  loja          Loja?         @relation(fields: [idLoja], references: [id], onDelete: SetNull)
+  nomeLoja      String?       @map("nome_loja") @db.VarChar(255)
+  tipo          TransacaoTipo
+  categoria     TransacaoCat  @default(reciclagem)
+  valor         Decimal       @default(0) @db.Decimal(10, 2)
+  kg            Decimal       @default(0) @db.Decimal(10, 2)
+  materiais     Json?
+  materiaisDesc String        @default("-") @map("materiais_desc") @db.VarChar(500)
+  forma         String        @default("pix") @db.VarChar(50)
+  criadoEm      DateTime      @default(now()) @map("criado_em") @db.Timestamptz
+
+  @@index([criadoEm])
+  @@index([tipo, criadoEm])
+  @@index([idCliente, tipo, criadoEm])
+  @@index([idLoja, tipo, criadoEm])
+  @@map("transacoes")
+}
+
+model QrCode {
+  token         String        @id @db.VarChar(255)
+  idTransacao   Int           @unique @default(autoincrement()) @map("id_transacao")
+  idLoja        Int           @map("id_loja")
+  loja          Loja          @relation(fields: [idLoja], references: [id], onDelete: Cascade)
+  nomeLoja      String?       @map("nome_loja") @db.VarChar(255)
+  tipo          TransacaoTipo @default(credito)
+  valor         Decimal       @db.Decimal(10, 2)
+  materiais     Json?
+  materiaisDesc String        @default("-") @map("materiais_desc") @db.VarChar(500)
+  produto       String?       @db.VarChar(255)
+  status        QrStatus      @default(ativo)
+  ipGerado      String?       @map("ip_gerado") @db.VarChar(64)
+  criadoEm      DateTime      @default(now()) @map("criado_em") @db.Timestamptz
+  expiraEm      DateTime      @map("expira_em") @db.Timestamptz
+  usadoEm       DateTime?     @map("usado_em") @db.Timestamptz
+  idCliente     Int?          @map("id_cliente")
+  cliente       Usuario?      @relation(fields: [idCliente], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([criadoEm])
+  @@index([idLoja, status])
+  @@map("qr_codes")
+}
+
+model Configuracao {
+  chave String @id @db.VarChar(100)
+  valor Json
+
+  @@map("configuracoes")
+}
+
+model LogAuditoria {
+  id        Int      @id @default(autoincrement())
+  idCliente Int?     @map("id_cliente")
+  cliente   Usuario? @relation(fields: [idCliente], references: [id], onDelete: SetNull)
+  acao      String?  @db.VarChar(100)
+  detalhe   String?
+  ip        String?  @db.VarChar(64)
+  criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz
+
+  @@index([acao])
+  @@index([criadoEm])
+  @@map("logs_auditoria")
+}
+
+model PasswordResetCode {
+  id         Int      @id @default(autoincrement())
+  usuarioId  Int      @map("usuario_id")
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  codigoHash String   @map("codigo_hash") @db.VarChar(255)
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz
+  expiraEm   DateTime @map("expira_em") @db.Timestamptz
+  tentativas Int      @default(0)
+  utilizado  Boolean  @default(false)
+
+  @@index([usuarioId])
+  @@map("password_reset_codes")
+}
+
+// Contadores para rate limiting distribuído (compartilhado entre instâncias via PostgreSQL).
+model RateLimit {
+  chave     String   @id @db.VarChar(255)
+  contagem  Int      @default(0)
+  expiraEm  DateTime @map("expira_em") @db.Timestamptz
+
+  @@index([expiraEm])
+  @@map("rate_limits")
+}

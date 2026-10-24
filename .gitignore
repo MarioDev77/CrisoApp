@@ -1,0 +1,29 @@
+# Segredos e configurações locais
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+**/secrets/
+**/credentials.json
+**/service-account*.json
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+# Dumps e backups de banco (mantenha migrations versionadas)
+**/estrutura.sql
+**/dump*.sql
+**/backup*.sql
+**/*.sql.gz
+**/*.dump
+**/*.bak
+# Arquivos locais/gerados
+**/node_modules/
+**/.next/
+**/.next-app/
+**/dist/
+**/coverage/
+**/*.log
+**/*.tsbuildinfo
+.DS_Store
+Thumbs.db
