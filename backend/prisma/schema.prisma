@@ -139,6 +139,7 @@ model Transacao {
 model QrCode {
   token         String        @id @db.VarChar(255)
   tokenHash     String?       @unique @map("token_hash") @db.VarChar(64)
+  codigoCurto   String?       @unique @map("codigo_curto") @db.VarChar(16)
   idTransacao   Int           @unique @default(autoincrement()) @map("id_transacao")
   idLoja        Int           @map("id_loja")
   loja          Loja          @relation(fields: [idLoja], references: [id], onDelete: Cascade)

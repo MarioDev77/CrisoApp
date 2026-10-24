@@ -36,3 +36,11 @@ Todas são intencionais (correção de falhas encontradas na auditoria). **Confi
 - Rotas renomeadas: `/api/auth/admin-mfa/*` → `/api/auth/mfa/*`; `/admin-mfa` → `/mfa` (o caminho antigo redireciona).
 - Quem perdeu o celular e os códigos: o admin usa "Resetar MFA" em Usuários ou Lojas parceiras (pede a senha do admin, encerra as sessões da conta e registra na auditoria).
 - `tests/funcional.mjs` loga como cliente/admin sem código MFA e precisa ser ajustado (ou rodar com `MFA_ESCOPO=admin` e um admin já com MFA).
+
+## Código curto do QR (alternativa à câmera)
+
+- Todo QR gerado pela loja ganha um código de 8 caracteres (ex.: `K7M2-9QXA`, alfabeto sem I, L, O, 0 e 1), guardado em `qr_codes.codigo_curto` (migração `20261027000000_qr_codigo_curto`, aditiva, roda no `prisma migrate deploy` do deploy).
+- `/api/qr/validar` e `/api/qr/confirmar` aceitam o token completo **ou** o código curto, com ou sem hífen e em qualquer caixa. O código vale o mesmo que o QR (máx. 60 s) e é de uso único.
+- Limite de validações por usuário subiu de 5 para 10 a cada 15 minutos, porque digitar erra mais que escanear. Espaço de 31^8 combinações e QR de 60 s tornam adivinhar inviável nesse limite.
+- Scanner: tenta câmera traseira, qualquer câmera e cada câmera da lista; mostra o motivo quando falha; e há "Tirar foto do QR", que abre o app de câmera do celular e lê o QR da foto (funciona mesmo quando o navegador não libera `getUserMedia`).
+- CSP ganhou `media-src 'self' blob: mediastream:` (proxy.ts e vercel.json).

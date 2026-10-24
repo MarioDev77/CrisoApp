@@ -6,8 +6,20 @@ import { HttpError, notFound } from "@/lib/errors";
 import { calcularCreditos, descricao, materiaisSchema } from "@/lib/materiais";
 import { configQr, taxasVigentes } from "@/lib/servicos";
 import { camposQrCode } from "@/lib/pii";
+import { formatarCodigo, novoCodigoCurto } from "@/lib/qr-codigo";
+import { Prisma } from "@/generated/prisma/client";
 
 const VALOR_MAXIMO_DEBITO = 100000;
+/** Gera o código curto e tenta de novo na (rara) colisão com outro código já guardado. */
+async function comCodigoCurto<T>(criar: (codigo: string) => Promise<T>): Promise<{ qr: T; codigo: string }> {
+  for (let i = 0; i < 5; i++) {
+    const codigo = novoCodigoCurto();
+    try { return { qr: await criar(codigo), codigo }; }
+    catch (e) { if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") continue; throw e; }
+  }
+  throw new HttpError(503, "Não foi possível gerar o código agora. Tente novamente.");
+}
+
 const body = z.object({
   tipo: z.enum(["credito", "debito"]).default("credito"),
   valor: z.coerce.number().optional(),
@@ -29,19 +41,20 @@ export const POST = api(
       if (!v || v <= 0 || !Number.isFinite(v)) throw new HttpError(400, "Valor invalido");
       if (v > VALOR_MAXIMO_DEBITO) throw new HttpError(400, "Valor de desconto muito alto");
       if (!body.produto) throw new HttpError(400, "Informe o produto/servico utilizado");
-      const qr = await prisma().qrCode.create({
-        data: { token, ...camposQrCode(token, ip, { valor: Math.round(v * 100) / 100, materiaisDesc: body.produto, produto: body.produto }), idLoja: loja.id, nomeLoja: loja.nome, tipo: "debito", valor: Math.round(v * 100) / 100, materiaisDesc: body.produto, produto: body.produto, ipGerado: ip, expiraEm },
-      });
-      return { sucesso: true, token, id_transacao: qr.idTransacao, expira_em: expiraEm.toISOString() };
+      const produto: string = body.produto; // o TypeScript perde o estreitamento dentro do callback abaixo
+      const { qr, codigo } = await comCodigoCurto((codigo) => prisma().qrCode.create({
+        data: { token, codigoCurto: codigo, ...camposQrCode(token, ip, { valor: Math.round(v * 100) / 100, materiaisDesc: produto, produto: produto }), idLoja: loja.id, nomeLoja: loja.nome, tipo: "debito", valor: Math.round(v * 100) / 100, materiaisDesc: produto, produto: produto, ipGerado: ip, expiraEm },
+      }));
+      return { sucesso: true, token, codigo: formatarCodigo(codigo), id_transacao: qr.idTransacao, expira_em: expiraEm.toISOString() };
     }
 
     // Crédito: o valor é SEMPRE recalculado no servidor; teto de unidades por material (anti-fraude).
     const mat = body.materiais ?? { papelao: 0, plastico: 0, aluminio: 0, vidro: 0 };
     const valor = calcularCreditos(mat, await taxasVigentes());
     if (valor <= 0) throw new HttpError(400, "Quantidade insuficiente para gerar credito");
-    const qr = await prisma().qrCode.create({
-      data: { token, ...camposQrCode(token, ip, { valor, materiais: mat, materiaisDesc: descricao(mat), produto: null }), idLoja: loja.id, nomeLoja: loja.nome, tipo: "credito", valor, materiais: mat, materiaisDesc: descricao(mat), ipGerado: ip, expiraEm },
-    });
-    return { sucesso: true, token, id_transacao: qr.idTransacao, expira_em: expiraEm.toISOString() };
+    const { qr, codigo } = await comCodigoCurto((codigo) => prisma().qrCode.create({
+      data: { token, codigoCurto: codigo, ...camposQrCode(token, ip, { valor, materiais: mat, materiaisDesc: descricao(mat), produto: null }), idLoja: loja.id, nomeLoja: loja.nome, tipo: "credito", valor, materiais: mat, materiaisDesc: descricao(mat), ipGerado: ip, expiraEm },
+    }));
+    return { sucesso: true, token, codigo: formatarCodigo(codigo), id_transacao: qr.idTransacao, expira_em: expiraEm.toISOString() };
   },
 );

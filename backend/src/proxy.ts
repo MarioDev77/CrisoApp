@@ -48,6 +48,7 @@ export function proxy(req: NextRequest) {
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://accounts.google.com${dev ? " 'unsafe-eval'" : ""}`,
     `style-src 'self' 'nonce-${nonce}' https://accounts.google.com`,
     "img-src 'self' data: blob: https://*.googleusercontent.com",
+    "media-src 'self' blob: mediastream:",
     "font-src 'self'",
     "connect-src 'self' https://accounts.google.com",
     "frame-src https://accounts.google.com",

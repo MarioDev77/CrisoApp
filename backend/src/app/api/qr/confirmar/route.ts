@@ -6,6 +6,7 @@ import { calcularCreditos, calcularKg, MATERIAIS, type Material } from "@/lib/ma
 import { Prisma } from "@/generated/prisma/client";
 import { arred, auditar, limitesAntifraude, num, taxasVigentes, tz } from "@/lib/servicos";
 import { decifrarDadosQr, ipDoQr, tokenHashQr } from "@/lib/pii";
+import { codigoCurtoDe } from "@/lib/qr-codigo";
 
 const KG_MAXIMO = 200;
 const MAX_CREDITOS_DIA = 5;
@@ -25,9 +26,10 @@ export const POST = api(
       async (tx): Promise<Resultado> => {
         // Trava o QR e o cliente: confirmações simultâneas do mesmo QR serializam aqui.
         const hashedToken = tokenHashQr(body.token);
+        const curto = codigoCurtoDe(body.token);
         const qrs = await tx.$queryRaw<QrRow[]>`
           SELECT token, id_loja, nome_loja, tipo::text AS tipo, valor::text AS valor, materiais, materiais_desc, produto, dados_enc, status::text AS status, ip_gerado, ip_enc, expira_em
-          FROM qr_codes WHERE token = ${body.token} OR token_hash = ${hashedToken} FOR UPDATE`;
+          FROM qr_codes WHERE token = ${body.token} OR token_hash = ${hashedToken} OR codigo_curto = ${curto} FOR UPDATE`;
         const qr = qrs[0];
         if (!qr) return { ok: false, status: 404, msg: "QR Code nao encontrado" };
         if (qr.status !== "ativo") return { ok: false, status: 400, msg: "QR Code ja utilizado ou expirado" };
