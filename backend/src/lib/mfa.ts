@@ -50,11 +50,7 @@ export const cifrarCodigoRecuperacao = (code: string) => cifrar(code, "admin_mfa
 export const decifrarCodigoRecuperacao = (blob: string) => decifrar(blob, "admin_mfa_codigos.codigo");
 
 /**
- * Admin sempre precisa de MFA. Loja precisa em "admin_loja" (padrão) e "todos". Cliente só em "todos".
- * Quem já ativou o MFA por conta própria continua sendo cobrado do código no login, seja qual for o escopo.
+ * MFA obrigatório apenas para administrador. Cliente e loja entram só com senha (ou Google, no caso do cliente).
+ * Loja que ativou o MFA por conta própria continua sendo cobrada do código no login.
  */
-export const mfaObrigatorio = (tipoPerfil: string) => {
-  const escopo = env().MFA_ESCOPO;
-  if (tipoPerfil === "admin" || escopo === "todos") return true;
-  return tipoPerfil === "loja" && escopo === "admin_loja";
-};
+export const mfaObrigatorio = (tipoPerfil: string) => tipoPerfil === "admin";

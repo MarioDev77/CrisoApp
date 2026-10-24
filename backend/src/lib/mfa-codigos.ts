@@ -43,6 +43,8 @@ export async function consumirCodigoRecuperacao(mfaId: number, codigo: string): 
  * - MFA ainda não ativo e obrigatório para o perfil: { setup: true } (sessão restrita até configurar).
  */
 export async function exigirMfaNoLogin(conta: ContaMfa, tipoPerfil: string, codigo: string): Promise<{ mfa: boolean; setup: boolean }> {
+  // Cliente não usa MFA: nunca pede código nem configuração, mesmo que exista registro antigo.
+  if (tipoPerfil === "cliente") return { mfa: false, setup: false };
   const mfa = await buscarMfa(conta);
   if (!mfa?.habilitado) return { mfa: false, setup: mfaObrigatorio(tipoPerfil) };
   const code = codigo.trim();
