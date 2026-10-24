@@ -10,7 +10,7 @@
     "start": "next start",
     "lint": "eslint src prisma",
     "typecheck": "tsc --noEmit",
-    "typecheck:web": "npm --prefix apps/web run typecheck",
+    "typecheck:web": "npm --prefix ../frontend run typecheck",
     "db:generate": "prisma generate",
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
@@ -43,5 +43,8 @@
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "vitest": "^5.0.5"
+  },
+  "engines": {
+    "node": "22"
   }
 }

@@ -1,0 +1,13 @@
+{
+  "name": "crisoverde-deploy",
+  "version": "2.0.0",
+  "private": true,
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "build": "npm ci --prefix backend --include=dev && npm ci --prefix frontend --include=dev && npm --prefix backend run build",
+    "start": "npm --prefix backend run start",
+    "db:migrate:deploy": "npm --prefix backend run db:migrate:deploy"
+  }
+}
