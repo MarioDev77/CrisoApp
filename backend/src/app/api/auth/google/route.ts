@@ -17,6 +17,7 @@ let client: OAuth2Client | null = null;
 export const POST = api(
   { auth: false, body, limites: [{ nome: "google-ip", por: "ip", max: 30, janelaSeg: 900 }] },
   async ({ body }) => {
+    if (!env().GOOGLE_LOGIN_ATIVO) throw new HttpError(503, "Login com Google indisponível no momento.");
     const id = env().GOOGLE_CLIENT_ID;
     if (!id) throw new HttpError(503, "Login com Google indisponível no momento.");
     client ??= new OAuth2Client(id);

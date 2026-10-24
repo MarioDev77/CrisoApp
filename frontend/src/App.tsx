@@ -3,6 +3,9 @@ import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } fr
 import { QRCodeSVG } from 'qrcode.react';
 import { api, ApiError, dateOnly, dateTime, materialLabels, materials, money, post, routeFor, type Profile } from './api';
 
+// Login com Google desativado. Para reativar: trocar para true aqui e ligar GOOGLE_LOGIN_ATIVO=true no backend.
+const GOOGLE_LOGIN_ATIVO: boolean = false;
+
 type ToastState = { message: string; kind?: 'error' | 'success' };
 const toastEvent = new EventTarget();
 function useToast() {
@@ -204,7 +207,7 @@ function AuthPage({ mode, onAuthenticated }: { mode: 'login' | 'signup'; onAuthe
     finally { setBusy(false); }
   };
   useEffect(() => {
-    if (mode !== 'login') return;
+    if (!GOOGLE_LOGIN_ATIVO || mode !== 'login') return;
     let active = true;
     setGoogleUnavailable(false);
     api<{ clientId?: string }>('/auth/google/client-id').then(async ({ clientId }) => {
@@ -235,7 +238,7 @@ function AuthPage({ mode, onAuthenticated }: { mode: 'login' | 'signup'; onAuthe
       {mode === 'signup' && <label className="legacy-terms"><input type="checkbox" checked={accepted} onChange={e => setAccepted(e.target.checked)} required /><span>Li a <Link to="/privacidade">Política de Privacidade</Link> e estou ciente do uso necessário de cookies para sessão.</span></label>}
       {mode === 'login' && <div className="legacy-forgot"><button type="button" className="legacy-link" onClick={() => setRecover(true)}>Esqueci a senha</button></div>}
       <button className="legacy-submit" disabled={busy}>{busy ? 'Aguarde…' : mode === 'login' ? 'Entrar' : 'Criar conta'}</button>
-      {mode === 'login' && <><div className="legacy-or">ou</div><div id="google-auth-button" className="legacy-google" />{googleUnavailable && <p className="legacy-google-unavailable">Login com Google indisponível no momento.</p>}</>}
+      {GOOGLE_LOGIN_ATIVO && mode === 'login' && <><div className="legacy-or">ou</div><div id="google-auth-button" className="legacy-google" />{googleUnavailable && <p className="legacy-google-unavailable">Login com Google indisponível no momento.</p>}</>}
       <div className="legacy-signup-link">{mode === 'login' ? 'Não tem uma conta?' : 'Já tem cadastro?'} <Link to={mode === 'login' ? '/cadastro' : '/login'}>{mode === 'login' ? 'Criar conta' : 'Entrar'}</Link></div>
       <p className="legacy-foot">© CrisoVerde — Juntos por um planeta mais verde · <Link to="/privacidade">Privacidade</Link></p>
     </form>

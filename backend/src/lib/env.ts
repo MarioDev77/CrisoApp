@@ -22,6 +22,7 @@ const schema = z.object({
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: z.string().optional(),
   GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_LOGIN_ATIVO: z.enum(["true", "false"]).default("false").transform((v) => v === "true"),
   LEGACY_BEARER: z.enum(["true", "false"]).default("false").transform((v) => v === "true"),
   APP_TIMEZONE: z.string().default("America/Sao_Paulo"),
   QR_MAX_UNIDADES_POR_MATERIAL: z.coerce.number().int().min(1).max(100000).default(200),
