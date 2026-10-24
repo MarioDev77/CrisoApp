@@ -4,6 +4,7 @@ import { compararSenha } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { HttpError } from "@/lib/errors";
 import { decifrarSegredoTotp, verificarTotp } from "@/lib/mfa";
+import { auditar } from "@/lib/servicos";
 import { buscarMfa, contaDoPerfil, listarCodigosRecuperacao, substituirCodigosRecuperacao } from "@/lib/mfa-codigos";
 
 const body = z.object({
@@ -13,7 +14,7 @@ const body = z.object({
 });
 
 // Rever ou regenerar os códigos de recuperação: só com MFA já validado e confirmação de identidade (senha ou código).
-export const POST = api({ auth: ["cliente", "loja", "admin"], body, limites: [{ nome: "mfa-codigos", por: "usuario", max: 10, janelaSeg: 900 }] }, async ({ usuario, body }) => {
+export const POST = api({ auth: ["cliente", "loja", "admin"], body, limites: [{ nome: "mfa-codigos", por: "usuario", max: 10, janelaSeg: 900 }] }, async ({ usuario, body, ip }) => {
   const mfa = await buscarMfa(contaDoPerfil(usuario));
   if (!mfa?.habilitado) throw new HttpError(409, "Ative o segundo fator antes de ver os códigos de recuperação.");
   const conta = usuario.tipo === "loja"
@@ -28,5 +29,6 @@ export const POST = api({ auth: ["cliente", "loja", "admin"], body, limites: [{ 
     if (!ok) throw new HttpError(401, "Código do autenticador incorreto.");
   }
   if (body.acao === "regenerar") await substituirCodigosRecuperacao(mfa.id);
+  await auditar(body.acao === "regenerar" ? "mfa_codigos_regenerados" : "mfa_codigos_visualizados", `perfil=${usuario.tipo}${usuario.tipo === "loja" ? ` loja_id=${usuario.id}` : ""}`, ip, usuario.tipo === "loja" ? null : usuario.id);
   return { sucesso: true, codigos: await listarCodigosRecuperacao(mfa.id) };
 });

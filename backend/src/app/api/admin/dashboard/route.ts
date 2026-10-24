@@ -15,7 +15,7 @@ export const GET = api({ auth: ["admin"] }, async () => {
     db.$queryRaw<{ n: number; kg: string; v: string; kg_mes: string }[]>`
       SELECT count(*)::int AS n, COALESCE(sum(kg),0)::text AS kg, COALESCE(sum(valor),0)::text AS v,
              COALESCE(sum(kg) FILTER (WHERE criado_em >= date_trunc('month', now() AT TIME ZONE ${z}) AT TIME ZONE ${z}),0)::text AS kg_mes
-      FROM transacoes WHERE tipo='credito'`,
+      FROM transacoes WHERE tipo='credito' AND categoria='reciclagem'`,
     db.$queryRaw<{ n: number; v: string }[]>`SELECT count(*)::int AS n, COALESCE(sum(valor),0)::text AS v FROM transacoes WHERE tipo='debito'`,
     db.$queryRaw<{ total: number; ativos: number }[]>`
       SELECT count(*)::int AS total, count(*) FILTER (WHERE status='ativo')::int AS ativos FROM usuarios WHERE tipo='cliente'`,
@@ -24,7 +24,7 @@ export const GET = api({ auth: ["admin"] }, async () => {
              COALESCE(sum(NULLIF(materiais->>'plastico','')::numeric),0)::text AS plastico,
              COALESCE(sum(NULLIF(materiais->>'aluminio','')::numeric),0)::text AS aluminio,
              COALESCE(sum(NULLIF(materiais->>'vidro','')::numeric),0)::text AS vidro
-      FROM transacoes WHERE tipo='credito' AND criado_em >= date_trunc('month', now() AT TIME ZONE ${z}) AT TIME ZONE ${z}`,
+      FROM transacoes WHERE tipo='credito' AND categoria='reciclagem' AND criado_em >= date_trunc('month', now() AT TIME ZONE ${z}) AT TIME ZONE ${z}`,
     db.$queryRaw<{ produto: string; quantidade: number; total: string }[]>`
       SELECT COALESCE(NULLIF(materiais_desc,''),'-') AS produto, count(*)::int AS quantidade, COALESCE(sum(valor),0)::text AS total
       FROM transacoes WHERE tipo='debito' AND criado_em >= date_trunc('month', now() AT TIME ZONE ${z}) AT TIME ZONE ${z}

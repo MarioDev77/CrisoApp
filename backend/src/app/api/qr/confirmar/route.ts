@@ -50,10 +50,12 @@ export const POST = api(
         }
         const qrDados = decifrarDadosQr({ dadosEnc: qr.dados_enc, valor: qr.valor, materiais: qr.materiais, materiaisDesc: qr.materiais_desc, produto: qr.produto });
         const valor = Number(qrDados.valor);
+        // Estorno de resgate também é tipo=credito, mas não é reciclagem: não conta nos tetos de reciclagem.
+        const soReciclagem = Prisma.sql`AND categoria = 'reciclagem'::"TransacaoCat"`;
         const usoHoje = async (t: "credito" | "debito") => {
           const c = await tx.$queryRaw<{ total: number }[]>`
             SELECT count(*)::int AS total FROM transacoes
-            WHERE id_cliente = ${cli.id} AND tipo = ${t}::"TransacaoTipo"
+            WHERE id_cliente = ${cli.id} AND tipo = ${t}::"TransacaoTipo" ${t === "credito" ? soReciclagem : Prisma.empty}
               AND (criado_em AT TIME ZONE ${tz()})::date = (now() AT TIME ZONE ${tz()})::date`;
           return c[0].total;
         };
@@ -92,8 +94,8 @@ export const POST = api(
         // Serializa créditos da mesma loja e aplica tetos diários configuráveis.
         await tx.$queryRaw`SELECT id FROM lojas WHERE id = ${qr.id_loja} FOR UPDATE`;
         const [totalLoja, totalCliente] = await Promise.all([
-          tx.$queryRaw<{ total: string }[]>`SELECT COALESCE(SUM(valor), 0)::text AS total FROM transacoes WHERE id_loja = ${qr.id_loja} AND tipo = 'credito'::"TransacaoTipo" AND (criado_em AT TIME ZONE ${tz()})::date = (now() AT TIME ZONE ${tz()})::date`,
-          tx.$queryRaw<{ total: string }[]>`SELECT COALESCE(SUM(valor), 0)::text AS total FROM transacoes WHERE id_cliente = ${cli.id} AND tipo = 'credito'::"TransacaoTipo" AND (criado_em AT TIME ZONE ${tz()})::date = (now() AT TIME ZONE ${tz()})::date`,
+          tx.$queryRaw<{ total: string }[]>`SELECT COALESCE(SUM(valor), 0)::text AS total FROM transacoes WHERE id_loja = ${qr.id_loja} AND tipo = 'credito'::"TransacaoTipo" AND categoria = 'reciclagem'::"TransacaoCat" AND (criado_em AT TIME ZONE ${tz()})::date = (now() AT TIME ZONE ${tz()})::date`,
+          tx.$queryRaw<{ total: string }[]>`SELECT COALESCE(SUM(valor), 0)::text AS total FROM transacoes WHERE id_cliente = ${cli.id} AND tipo = 'credito'::"TransacaoTipo" AND categoria = 'reciclagem'::"TransacaoCat" AND (criado_em AT TIME ZONE ${tz()})::date = (now() AT TIME ZONE ${tz()})::date`,
         ]);
         const antesLoja = Number(totalLoja[0].total);
         const antesCliente = Number(totalCliente[0].total);

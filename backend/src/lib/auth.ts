@@ -58,7 +58,9 @@ export function opcoesCookie(maxAge = SESSAO_SEG) {
 /** Lê o token do cookie HttpOnly ou (somente se LEGACY_BEARER=true) do cabeçalho Authorization. */
 function lerToken(req: Request): string | null {
   const cookie = req.headers.get("cookie") ?? "";
-  const m = cookie.match(new RegExp(`(?:^|;\\s*)(?:${COOKIE}|crisoverde_session)=([^;]+)`));
+  // Em produção só vale o cookie __Host-: o nome antigo (sem prefixo) pode ser plantado por um subdomínio ("cookie tossing").
+  const nomes = process.env.NODE_ENV === "production" ? COOKIE : `${COOKIE}|crisoverde_session`;
+  const m = cookie.match(new RegExp(`(?:^|;\\s*)(?:${nomes})=([^;]+)`));
   if (m) return decodeURIComponent(m[1]);
   if (env().LEGACY_BEARER) {
     const h = req.headers.get("authorization");
@@ -84,7 +86,8 @@ export async function autenticar(req: Request): Promise<Principal> {
         if (!anterior) throw new Error("sem chave anterior");
         ({ payload } = await jwtVerify(token, new TextEncoder().encode(anterior), { algorithms: ["HS256"] }));
       } catch {
-        if (!env().SESSION_SECRET || !env().JWT_SECRET) throw new Error("sessão inválida");
+        // JWT_SECRET (chave antiga, única para tudo) só vale fora de produção: a sessão dura 8 h e a migração já passou.
+        if (env().NODE_ENV === "production" || !env().SESSION_SECRET || !env().JWT_SECRET) throw new Error("sessão inválida");
         ({ payload } = await jwtVerify(token, new TextEncoder().encode(env().JWT_SECRET), { algorithms: ["HS256"] }));
       }
     }

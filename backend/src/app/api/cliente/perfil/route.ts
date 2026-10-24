@@ -47,7 +47,7 @@ export const PUT = api(
       if (!body.senha_atual || !(await compararSenha(body.senha_atual, u.senha))) throw new HttpError(400, "Para trocar o e-mail, informe sua senha atual corretamente.");
       const [outroUsuario, outraLoja] = await Promise.all([buscarUsuarioPorEmail(db, body.email), buscarLojaPorEmail(db, body.email)]);
       if ((outroUsuario && outroUsuario.id !== u.id) || outraLoja) throw new HttpError(400, "Este e-mail não está disponível.");
-      Object.assign(dados, camposEmailUsuario(body.email));
+      Object.assign(dados, camposEmailUsuario(body.email), { emailVerificado: false }); // novo e-mail ainda não foi provado
     }
 
     let atualizado;

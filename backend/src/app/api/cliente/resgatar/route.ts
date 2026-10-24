@@ -37,6 +37,7 @@ export const POST = api(
       const pendentes = await tx.$queryRaw<{ total: string }[]>`
         SELECT COALESCE(SUM(valor), 0)::text AS total FROM transacoes
         WHERE id_cliente = ${usuario.id} AND tipo = 'credito'::"TransacaoTipo"
+          AND categoria = 'reciclagem'::"TransacaoCat"
           AND criado_em > now() - make_interval(hours => ${limites.carencia_horas})`;
       const saldo = Number(conta.saldo);
       const disponivel = Math.max(0, saldo - Number(pendentes[0].total));
