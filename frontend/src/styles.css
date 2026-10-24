@@ -110,3 +110,17 @@
 .legacy-auth-screen .legacy-foot{margin-top:auto}
 .legacy-auth-screen .legacy-link,.legacy-auth-screen .legacy-signup-link a{font:inherit;font-weight:inherit}
 .legacy-google:has(+ .legacy-google-unavailable){display:none}
+
+/* MFA admin: tela de configuração no celular e códigos de recuperação */
+.mfa-steps{list-style:none;counter-reset:mfa;display:grid;gap:22px;margin:18px 0;padding:0}
+.mfa-steps>li{counter-increment:mfa;display:grid;gap:10px;position:relative;padding-left:38px}
+.mfa-steps>li::before{content:counter(mfa);position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--green);color:#fff;font-weight:800;font-size:.8rem}
+.mfa-steps .button.full{text-decoration:none}
+.key-box{border:1px dashed #9dc2a8;background:#f4f9f5;border-radius:12px;padding:14px;text-align:center}
+.key-box code{font:700 1.15rem/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;overflow-wrap:anywhere;user-select:all}
+.recovery-codes{list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:14px 0;padding:0}
+.recovery-codes li{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#f8fbf8}
+.recovery-codes code{font:700 .95rem ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em;user-select:all}
+.recovery-codes li.used{opacity:.55}.recovery-codes li.used code{text-decoration:line-through}.recovery-codes small{color:#8a9890;font-size:.68rem}
+.qr-center code{user-select:all;overflow-wrap:anywhere}
+@media(max-width:420px){.recovery-codes{grid-template-columns:1fr}}

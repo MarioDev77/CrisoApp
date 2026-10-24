@@ -1,12 +1,12 @@
 export type Profile = { id: number; nome: string; email: string; tipo: 'cliente' | 'loja' | 'admin'; id_loja?: number };
-export class ApiError extends Error { status: number; constructor(message: string, status: number) { super(message); this.status = status; } }
+export class ApiError extends Error { status: number; data: Record<string, any>; constructor(message: string, status: number, data: Record<string, any> = {}) { super(message); this.status = status; this.data = data; } }
 export async function api<T = any>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`/api${path}`, {
     ...options, credentials: 'include', cache: 'no-store',
     headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers },
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new ApiError(data.mensagem || 'Não foi possível concluir a solicitação.', response.status);
+  if (!response.ok) throw new ApiError(data.mensagem || 'Não foi possível concluir a solicitação.', response.status, data);
   return data as T;
 }
 export const post = <T = any>(path: string, body?: unknown) => api<T>(path, { method: 'POST', body: JSON.stringify(body ?? {}) });
