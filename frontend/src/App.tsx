@@ -76,6 +76,7 @@ function RoleGuard({ profile, onLogout }: { profile: Profile; onLogout: () => vo
 function LoadingPage() { return <div className="startup-loading"><img src="/logo.png" alt="CrisoVerde" /><span className="spinner" />Carregando CrisoVerde…</div>; }
 
 const isMobileDevice = () => typeof window !== 'undefined' && (Boolean(window.matchMedia?.('(pointer: coarse)').matches) || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+const authenticatorStoreUrl = () => (/iPhone|iPad|iPod/i.test(navigator.userAgent) ? 'https://apps.apple.com/app/google-authenticator/id388497605' : 'https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2');
 async function copyText(text: string) {
   try { await navigator.clipboard.writeText(text); return true; }
   catch {
@@ -94,11 +95,13 @@ function MfaPage({ onAuthenticated, phone = false }: { onAuthenticated: () => Pr
   const novaConta = Boolean((location.state as { novaConta?: boolean } | null)?.novaConta);
   const [setup, setSetup] = useState<MfaSetup | null>(null);
   const [code, setCode] = useState(''); const [recovery, setRecovery] = useState<string[]>([]);
-  const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(''); const [busy, setBusy] = useState(false); const [appMissing, setAppMissing] = useState(false);
   const loadSetup = useCallback((regenerar = false) => api<MfaSetup>('/auth/mfa/setup', { method: 'POST', body: JSON.stringify({ regenerar }) }).then(setSetup).catch(e => setError(e instanceof Error ? e.message : 'Não foi possível iniciar a configuração.')), []);
   useEffect(() => { void loadSetup(); }, [loadSetup]);
   const confirm = async (e: FormEvent) => { e.preventDefault(); setBusy(true); setError(''); try { const d = await post<{ codigos_recuperacao: string[] }>('/auth/mfa/confirm', { codigo: code }); setRecovery(d.codigos_recuperacao); await onAuthenticated(); } catch (e) { setError(e instanceof Error ? e.message : 'Código inválido.'); } finally { setBusy(false); } };
   const finish = async () => { if (novaConta) { try { await post('/auth/verificar-email/solicitar', {}); } catch { /* o reenvio fica disponível na tela de confirmação */ } navigate('/verificar-email'); return; } navigate('/'); };
+  // Se o app autenticador abrir, a página vai para segundo plano. Se continuar visível após ~2s, o app provavelmente não está instalado.
+  const tryOpenApp = () => { let left = false; const onChange = () => { if (document.visibilityState === 'hidden') left = true; }; document.addEventListener('visibilitychange', onChange); window.setTimeout(() => { document.removeEventListener('visibilitychange', onChange); if (!left) setAppMissing(true); }, 2000); };
   const regenerate = () => { setError(''); setCode(''); setSetup(null); void loadSetup(true); };
   const codeForm = <form className="stack" onSubmit={confirm}><Field label="Código de seis dígitos" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" value={code} onChange={v => setCode(v.replace(/\D/g, '').slice(0, 6))} required /><button className="button primary full" disabled={busy || code.length !== 6}>{busy ? 'Validando…' : 'Ativar MFA'}</button></form>;
   return <main className="auth-page"><section className="auth-card"><Brand /><h1>Proteja sua conta</h1>{error && <div className="alert error" role="alert">{error}</div>}
@@ -111,7 +114,7 @@ function MfaPage({ onAuthenticated, phone = false }: { onAuthenticated: () => Pr
       <p>Você está no celular, então não precisa ler QR Code. Siga os passos:</p>
       <ol className="mfa-steps">
         <li><strong>Copie a chave</strong><div className="key-box"><code>{groupKey(setup.secret)}</code></div><CopyButton text={setup.secret} label="Copiar chave" done="Chave copiada!" className="button primary full" /></li>
-        <li><strong>Abra seu app autenticador</strong><a className="button subtle full" href={setup.otpauth_url}>Abrir no app autenticador</a><small className="muted">Se nada abrir, instale o Google Authenticator, Microsoft Authenticator ou Authy, toque em “Inserir chave de configuração”, cole a chave e escolha “Baseada em tempo”.</small></li>
+        <li><strong>Abra seu app autenticador</strong><a className="button subtle full" href={setup.otpauth_url} onClick={tryOpenApp}>Abrir no app autenticador</a>{appMissing && <div className="alert info" role="status"><p>O app autenticador não abriu. Instale o Google Authenticator (é grátis), abra, toque em “Inserir chave de configuração”, cole a chave que você copiou e escolha “Baseada em tempo”. Esta página continua aberta.</p><a className="button primary full" href={authenticatorStoreUrl()} target="_blank" rel="noopener noreferrer">Instalar o Google Authenticator</a></div>}<small className="muted">Se nada abrir, instale o Google Authenticator, Microsoft Authenticator ou Authy, toque em “Inserir chave de configuração”, cole a chave e escolha “Baseada em tempo”. Não tem o app? <a href={authenticatorStoreUrl()} target="_blank" rel="noopener noreferrer">Instalar o Google Authenticator</a>.</small></li>
         <li><strong>Volte aqui e digite o código</strong>{codeForm}</li>
       </ol>
       <div className="button-row"><button type="button" className="button subtle small" onClick={regenerate}>Gerar nova chave</button><Link className="button subtle small" to="/mfa">Estou no computador (QR Code)</Link></div>
