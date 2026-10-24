@@ -2,15 +2,18 @@
   "name": "crisoverde",
   "version": "2.0.0",
   "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "dev": "next dev",
     "dev:web": "npm --prefix ../frontend run dev",
     "build": "npm run build:web && prisma generate && next build --webpack",
-    "build:web": "npm --prefix ../frontend run build && node scripts/copy-frontend.mjs",
+    "build:web": "npm --prefix ../frontend ci && npm --prefix ../frontend run build && node scripts/copy-frontend.mjs",
     "start": "next start",
     "lint": "eslint src prisma",
     "typecheck": "tsc --noEmit",
-    "typecheck:web": "npm --prefix ../frontend run typecheck",
+    "typecheck:web": "npm --prefix apps/web run typecheck",
     "db:generate": "prisma generate",
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
@@ -43,8 +46,5 @@
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "vitest": "^5.0.5"
-  },
-  "engines": {
-    "node": "22"
   }
 }
