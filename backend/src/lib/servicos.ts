@@ -25,6 +25,14 @@ export async function configQr(): Promise<{ expiracao_segundos: number; max_tent
   return { expiracao_segundos: Number(v.expiracao_segundos) || 60, max_tentativas: Number(v.max_tentativas) || 5 };
 }
 
+/** Meta mensal de reciclagem por cliente (kg). Definida pela administração; se nunca configurada vale o padrão abaixo. */
+export const META_MENSAL_KG_PADRAO = 5;
+export async function metaMensalKg(): Promise<number> {
+  const c = await prisma().configuracao.findUnique({ where: { chave: "meta_reciclagem_mensal_kg" } });
+  const v = Number((c?.valor as { kg?: number } | null)?.kg);
+  return Number.isFinite(v) && v > 0 ? v : META_MENSAL_KG_PADRAO;
+}
+
 export type LimitesAntifraude = { credito_loja_dia: number; credito_cliente_dia: number; resgate_cliente_dia: number; carencia_horas: number };
 const LIMITES_ANTIFRAUDE_PADRAO: LimitesAntifraude = { credito_loja_dia: 300, credito_cliente_dia: 150, resgate_cliente_dia: 100, carencia_horas: 24 };
 export async function limitesAntifraude(): Promise<LimitesAntifraude> {

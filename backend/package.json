@@ -19,7 +19,8 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:integration": "node tests/nova-fase.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",

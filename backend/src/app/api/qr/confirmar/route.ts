@@ -14,9 +14,10 @@ const MAX_CREDITOS_DIA = 5;
 const MAX_DEBITOS_DIA = 10;
 const body = z.object({ token: z.string({ error: "Token ausente" }).trim().min(1, "Token ausente").max(255), id_transacao: z.coerce.number().optional() });
 
-type QrRow = { token: string; id_loja: number; nome_loja: string | null; tipo: "credito" | "debito"; valor: string; materiais: unknown; materiais_desc: string; produto: string | null; dados_enc: string | null; status: string; ip_gerado: string | null; ip_enc: string | null; expira_em: Date };
+type QrRow = { token: string; id_transacao: number; id_loja: number; nome_loja: string | null; tipo: "credito" | "debito"; valor: string; materiais: unknown; materiais_desc: string; produto: string | null; dados_enc: string | null; status: string; ip_gerado: string | null; ip_enc: string | null; expira_em: Date };
+type Operacao = { id_transacao: number; referencia_qr: number; tipo: "credito" | "debito"; valor: number; kg: number; materiais: Record<Material, number> | null; descricao: string; loja: string | null; status: string; disponivel_em: Date | null };
 type Resultado =
-  | { ok: true; msg: string; saldo: number }
+  | { ok: true; msg: string; saldo: number; operacao: Operacao }
   | { ok: false; status: number; msg: string; extra?: Record<string, unknown>; auditoria?: { acao: string; detalhe: string; idCliente: number } };
 
 export const POST = api(
@@ -29,7 +30,7 @@ export const POST = api(
         const hashedToken = tokenHashQr(body.token);
         const curto = codigoCurtoDe(body.token);
         const qrs = await tx.$queryRaw<QrRow[]>`
-          SELECT token, id_loja, nome_loja, tipo::text AS tipo, valor::text AS valor, materiais, materiais_desc, produto, dados_enc, status::text AS status, ip_gerado, ip_enc, expira_em
+          SELECT token, id_transacao, id_loja, nome_loja, tipo::text AS tipo, valor::text AS valor, materiais, materiais_desc, produto, dados_enc, status::text AS status, ip_gerado, ip_enc, expira_em
           FROM qr_codes WHERE token = ${body.token} OR token_hash = ${hashedToken} OR codigo_curto = ${curto} FOR UPDATE`;
         const qr = qrs[0];
         if (!qr) return { ok: false, status: 404, msg: "QR Code nao encontrado" };
@@ -70,10 +71,13 @@ export const POST = api(
           if (num(cli.saldo) < valor) return { ok: false, status: 400, msg: "Saldo insuficiente" };
           const novo = await tx.usuario.update({ where: { id: cli.id }, data: { saldo: { decrement: dec(valor) }, totalUtilizado: { increment: dec(valor) } } });
           await tx.qrCode.update({ where: { token: qr.token }, data: { status: "usado", usadoEm: new Date(), idCliente: cli.id } });
-          await tx.transacao.create({
-            data: { idCliente: cli.id, nomeCliente: cli.nome, idLoja: qr.id_loja, nomeLoja: qr.nome_loja, tipo: "debito", categoria: "resgate", valor: dec(valor), kg: 0, materiaisDesc: qrDados.produto || qrDados.materiaisDesc || "-", forma: "loja" },
+          const lanc = await tx.transacao.create({
+            data: { idCliente: cli.id, nomeCliente: cli.nome, idLoja: qr.id_loja, nomeLoja: qr.nome_loja, tipo: "debito", categoria: "resgate", valor: dec(valor), kg: 0, materiaisDesc: qrDados.produto || qrDados.materiaisDesc || "-", forma: "loja", idQrTransacao: qr.id_transacao },
           });
-          return { ok: true, msg: "Moedas debitadas com sucesso!", saldo: num(novo.saldo) };
+          return {
+            ok: true, msg: "Moedas debitadas com sucesso!", saldo: num(novo.saldo),
+            operacao: { id_transacao: lanc.id, referencia_qr: qr.id_transacao, tipo: "debito", valor: arred(valor), kg: 0, materiais: null, descricao: qrDados.produto || qrDados.materiaisDesc || "-", loja: qr.nome_loja, status: "concluido", disponivel_em: null },
+          };
         }
 
         const n = await usoHoje("credito");
@@ -115,19 +119,27 @@ export const POST = api(
           data: { saldo: { increment: dec(valor) }, totalGanho: { increment: dec(valor) }, totalRecicladoKg: { increment: dec(kg) }, totalTrocas: { increment: 1 } },
         });
         await tx.qrCode.update({ where: { token: qr.token }, data: { status: "usado", usadoEm: new Date(), idCliente: cli.id } });
-        await tx.transacao.create({
-          data: { idCliente: cli.id, nomeCliente: cli.nome, idLoja: qr.id_loja, nomeLoja: qr.nome_loja, tipo: "credito", categoria: "reciclagem", valor: dec(valor), kg: dec(kg), materiais: mat, materiaisDesc: qrDados.materiaisDesc },
+        const lanc = await tx.transacao.create({
+          data: { idCliente: cli.id, nomeCliente: cli.nome, idLoja: qr.id_loja, nomeLoja: qr.nome_loja, tipo: "credito", categoria: "reciclagem", valor: dec(valor), kg: dec(kg), materiais: mat, materiaisDesc: qrDados.materiaisDesc, idQrTransacao: qr.id_transacao },
         });
-        return { ok: true, msg: "Creditos adicionados com sucesso!", saldo: num(novo.saldo) };
+        const fimCarencia = new Date(lanc.criadoEm.getTime() + limites.carencia_horas * 3_600_000);
+        return {
+          ok: true, msg: "Creditos adicionados com sucesso!", saldo: num(novo.saldo),
+          operacao: { id_transacao: lanc.id, referencia_qr: qr.id_transacao, tipo: "credito", valor: arred(valor), kg, materiais: mat, descricao: qrDados.materiaisDesc, loja: qr.nome_loja, status: fimCarencia > new Date() ? "em_carencia" : "concluido", disponivel_em: fimCarencia > new Date() ? fimCarencia : null },
+        };
       },
       { maxWait: 5000, timeout: 10000 },
-    );
+    ).catch((e: unknown) => {
+      // Barreira final do banco: UNIQUE(transacoes.id_qr_transacao). Não vaza detalhes internos.
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return { ok: false, status: 400, msg: "QR Code ja utilizado ou expirado" } as Resultado;
+      throw e;
+    });
 
     if (!r.ok) {
       // auditoria fora da transação (não é perdida pelo rollback)
       if (r.auditoria) await auditar(r.auditoria.acao, r.auditoria.detalhe, ip, r.auditoria.idCliente);
       throw new HttpError(r.status, r.msg, r.extra);
     }
-    return { sucesso: true, mensagem: r.msg, novo_saldo: arred(r.saldo) };
+    return { sucesso: true, mensagem: r.msg, novo_saldo: arred(r.saldo), operacao: r.operacao };
   },
 );

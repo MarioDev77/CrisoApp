@@ -78,6 +78,7 @@ model Usuario {
   resetCodes   PasswordResetCode[]
   verificationCodes EmailVerificationCode[]
   resgates      Resgate[]
+  resgatesRecompensa ResgateRecompensa[]
 
   @@index([status])
   @@index([tipo, criadoEm])
@@ -107,6 +108,7 @@ model Loja {
 
   transacoes Transacao[]
   qrCodes    QrCode[]
+  recompensas Recompensa[]
 
   @@map("lojas")
 }
@@ -127,6 +129,8 @@ model Transacao {
   materiais     Json?
   materiaisDesc String        @default("-") @map("materiais_desc") @db.VarChar(500)
   forma         String        @default("pix") @db.VarChar(50)
+  // Referência ao QR Code que originou a operação (qr_codes.id_transacao). UNIQUE: um QR nunca gera duas transações.
+  idQrTransacao Int?          @unique @map("id_qr_transacao")
   criadoEm      DateTime      @default(now()) @map("criado_em") @db.Timestamptz
 
   @@index([criadoEm])
@@ -280,4 +284,68 @@ model RateLimit {
 
   @@index([expiraEm])
   @@map("rate_limits")
+}
+
+// ---- Loja de recompensas (nova fase) --------------------------------------------------------------
+// O débito continua no livro-razão existente (transacoes + usuarios.saldo); estas tabelas guardam só o
+// catálogo e o voucher gerado. Não há segundo sistema de saldo.
+enum ResgateRecompensaStatus {
+  ativo
+  utilizado
+  cancelado
+  expirado
+}
+
+model Recompensa {
+  id               Int      @id @default(autoincrement())
+  nome             String   @db.VarChar(120)
+  descricao        String   @default("") @db.VarChar(1000)
+  categoria        String   @default("geral") @db.VarChar(50)
+  custo            Decimal  @db.Decimal(10, 2)
+  // null = sem controle de estoque
+  estoque          Int?
+  // null = sem limite de resgates por cliente
+  limitePorCliente Int?     @map("limite_por_cliente")
+  ativo            Boolean  @default(true)
+  disponivelAte    DateTime? @map("disponivel_ate") @db.Timestamptz
+  // validade do voucher depois de resgatado
+  validadeDias     Int      @default(30) @map("validade_dias")
+  regras           String   @default("") @db.VarChar(2000)
+  idLoja           Int?     @map("id_loja")
+  loja             Loja?    @relation(fields: [idLoja], references: [id], onDelete: SetNull)
+  criadoEm         DateTime @default(now()) @map("criado_em") @db.Timestamptz
+  atualizadoEm     DateTime @updatedAt @map("atualizado_em") @db.Timestamptz
+
+  resgates ResgateRecompensa[]
+
+  @@index([ativo, categoria])
+  @@index([idLoja])
+  @@map("recompensas")
+}
+
+model ResgateRecompensa {
+  id               Int                     @id @default(autoincrement())
+  idCliente        Int                     @map("id_cliente")
+  cliente          Usuario                 @relation(fields: [idCliente], references: [id], onDelete: Restrict)
+  idRecompensa     Int                     @map("id_recompensa")
+  recompensa       Recompensa              @relation(fields: [idRecompensa], references: [id], onDelete: Restrict)
+  // Cópia do que foi cobrado/visto no momento do resgate (mudar o catálogo depois não altera vouchers antigos).
+  nomeRecompensa   String                  @map("nome_recompensa") @db.VarChar(120)
+  custo            Decimal                 @db.Decimal(10, 2)
+  codigo           String                  @unique @db.VarChar(16)
+  status           ResgateRecompensaStatus @default(ativo)
+  // Chave gerada pelo navegador por tentativa de resgate: repetir a mesma requisição devolve o mesmo voucher.
+  chave            String                  @db.VarChar(64)
+  idTransacao      Int?                    @unique @map("id_transacao")
+  expiraEm         DateTime                @map("expira_em") @db.Timestamptz
+  usadoEm          DateTime?               @map("usado_em") @db.Timestamptz
+  canceladoEm      DateTime?               @map("cancelado_em") @db.Timestamptz
+  criadoEm         DateTime                @default(now()) @map("criado_em") @db.Timestamptz
+  atualizadoEm     DateTime                @updatedAt @map("atualizado_em") @db.Timestamptz
+
+  @@unique([idCliente, chave])
+  @@index([idCliente, criadoEm])
+  @@index([idRecompensa, status])
+  @@index([status, criadoEm])
+  @@map("resgates_recompensa")
 }
