@@ -48,7 +48,13 @@ export default function App() {
     finally { setReady(true); }
   }, []);
   useEffect(() => { void loadProfile(); }, [loadProfile, location.pathname]);
-  const logout = async () => { try { await post('/auth/logout'); } catch { /* sessão pode já ter expirado */ } setProfile(null); window.location.assign('/login'); };
+  // Sessão já expirada (401) conta como "saiu". Qualquer outra falha (rede, servidor) avisa e mantém a pessoa no painel:
+  // redirecionar com o cookie ainda válido faria o app devolvê-la ao painel, parecendo que o botão não funciona.
+  const logout = async () => {
+    try { await post('/auth/logout'); }
+    catch (e) { if (!(e instanceof ApiError && e.status === 401)) { notify('Não foi possível sair agora. Verifique sua conexão e tente de novo.', 'error'); return; } }
+    setProfile(null); window.location.assign('/login');
+  };
   return <>
     <Routes>
       <Route path="/" element={<Navigate to={profile ? routeFor(profile) : '/login'} replace />} />
