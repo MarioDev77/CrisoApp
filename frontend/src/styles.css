@@ -200,3 +200,10 @@ textarea.field{width:100%;min-height:70px;border:1px solid var(--border);border-
   .sidebar nav::-webkit-scrollbar{display:none}
   .sidebar-bottom .nav-item.logout{color:#ffd9d4}
 }
+
+/* ===== Ícones SVG Crisoverde (inline) e globo do Início ===== */
+.icon{display:block;flex:none;margin:0 auto}
+.icon.icon-inline{display:inline-block;margin:0;vertical-align:-.2em}
+.home-globe{position:relative;isolation:isolate}
+.home-globe::before{content:'';position:absolute;z-index:-1;pointer-events:none;top:-6px;right:0;width:min(620px,92%);aspect-ratio:700/478;background:url('./assets/globo-criso.png') no-repeat right top/contain;opacity:.13}
+.home-globe .panel,.home-globe .stat-card{background:rgba(255,255,255,.86)}

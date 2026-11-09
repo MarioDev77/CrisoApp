@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { Icon, MaterialIcon } from './icons';
 import { api, dateTime, materialLabels, materials, money, post } from './api';
 import { Chart, EmptyState, ErrorBlock, fmtNum, notify, PageTitle, Panel, Progress, Skeleton, Stat, StatsSkeleton, StatusBadge, Table, Trend, useLoad } from './ui';
 
-const emoji: Record<string, string> = { papelao: '📦', plastico: '🧴', aluminio: '🥫', vidro: '🍾' };
 const dm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 const rotuloPeriodo = (iso: string, g: string) => (g === 'mes' ? `${iso.slice(5, 7)}/${iso.slice(0, 4)}` : g === 'semana' ? `sem ${dm(iso)}` : dm(iso));
 const isoHoje = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
@@ -41,11 +41,11 @@ export function ImpactPage() {
     {r.loading && !x ? <><StatsSkeleton count={6} /><Panel><Skeleton lines={6} /></Panel></> : x && <>
       <p className="fine-print">Período: {x.periodo.de.split('-').reverse().join('/')} a {x.periodo.ate.split('-').reverse().join('/')} ({x.periodo.dias} dias) · comparado com {x.periodo.periodo_anterior.de.split('-').reverse().join('/')} a {x.periodo.periodo_anterior.ate.split('-').reverse().join('/')}</p>
       <div className="stats-grid">
-        <div><Stat label="Reciclagens confirmadas" value={fmtNum(x.resumo.operacoes, 0)} icon="♻" /><Trend value={x.variacao.operacoes} /></div>
-        <div><Stat label="Material coletado (est.)" value={`${fmtNum(x.resumo.kg, 1)} kg`} icon="▤" caption={`${fmtNum(x.resumo.unidades, 0)} unidades`} /><Trend value={x.variacao.kg} /></div>
-        <div><Stat label="Alunos participantes" value={fmtNum(x.resumo.participantes, 0)} icon="♙" caption={`${x.participacao.percentual}% dos ${x.participacao.clientes_ativos} ativos`} /><Trend value={x.variacao.participantes} /></div>
-        <Stat label="Pontos de coleta ativos" value={fmtNum(x.resumo.lojas_ativas, 0)} icon="⌂" />
-        <Stat label="Créditos distribuídos" value={x.resumo.creditos === null ? '—' : money(x.resumo.creditos)} icon="↗" caption={x.resumo.creditos === null ? 'indisponível com filtro de material' : undefined} />
+        <div><Stat label="Reciclagens confirmadas" value={fmtNum(x.resumo.operacoes, 0)} icon={<Icon name="recycle" />} /><Trend value={x.variacao.operacoes} /></div>
+        <div><Stat label="Material coletado (est.)" value={`${fmtNum(x.resumo.kg, 1)} kg`} icon={<Icon name="leaf" />} caption={`${fmtNum(x.resumo.unidades, 0)} unidades`} /><Trend value={x.variacao.kg} /></div>
+        <div><Stat label="Alunos participantes" value={fmtNum(x.resumo.participantes, 0)} icon={<Icon name="support" />} caption={`${x.participacao.percentual}% dos ${x.participacao.clientes_ativos} ativos`} /><Trend value={x.variacao.participantes} /></div>
+        <Stat label="Pontos de coleta ativos" value={fmtNum(x.resumo.lojas_ativas, 0)} icon={<Icon name="store" />} />
+        <Stat label="Créditos distribuídos" value={x.resumo.creditos === null ? '—' : money(x.resumo.creditos)} icon={<Icon name="coins" />} caption={x.resumo.creditos === null ? 'indisponível com filtro de material' : undefined} />
       </div>
       {x.resumo.operacoes === 0 && <div className="alert info">Nenhuma reciclagem confirmada neste recorte. Os gráficos abaixo ficam vazios até haver registros.</div>}
       <Panel title="Evolução da coleta" action={<label className="field-label compact-label" style={{ margin: 0 }}>Métrica<select value={metrica} onChange={e => setMetrica(e.target.value as any)}><option value="kg">Peso estimado (kg)</option><option value="operacoes">Operações</option><option value="unidades">Unidades</option></select></label>}>
@@ -54,7 +54,7 @@ export function ImpactPage() {
       <div className="two-up">
         <Panel title="Por tipo de material">
           <Chart title="Unidades por material" unit="unidades" kind="bar" digits={0} color="#d1ad4b" data={x.por_material.map((m: any) => ({ label: materialLabels[m.material as keyof typeof materialLabels], value: m.unidades }))} />
-          <Table columns={['Material', 'Operações', 'Unidades', 'Peso (est.)']} rows={x.por_material.map((m: any) => [`${emoji[m.material]} ${materialLabels[m.material as keyof typeof materialLabels]}`, fmtNum(m.operacoes, 0), fmtNum(m.unidades, 0), `${fmtNum(m.kg, 2)} kg`])} />
+          <Table columns={['Material', 'Operações', 'Unidades', 'Peso (est.)']} rows={x.por_material.map((m: any) => [<span className="chip-row"><MaterialIcon material={m.material} size={1.3} inline /> {materialLabels[m.material as keyof typeof materialLabels]}</span>, fmtNum(m.operacoes, 0), fmtNum(m.unidades, 0), `${fmtNum(m.kg, 2)} kg`])} />
         </Panel>
         <Panel title="Pontos de coleta (top 10)">
           <Chart title="Peso estimado por ponto de coleta" unit="kg (estimado)" kind="bar" digits={2} data={x.por_loja.map((l: any) => ({ label: l.nome.slice(0, 10), value: l.kg }))} />
@@ -111,7 +111,7 @@ export function RewardsAdmin() {
   return <>
     <PageTitle title="Recompensas" description="Cadastre benefícios, controle estoque e acompanhe os vouchers resgatados." action={<button className="button primary" onClick={abrirNovo}>Nova recompensa</button>} />
     <div className="tabs" role="tablist"><button role="tab" aria-selected={aba === 'catalogo'} onClick={() => setAba('catalogo')}>Catálogo</button><button role="tab" aria-selected={aba === 'vouchers'} onClick={() => setAba('vouchers')}>Vouchers resgatados</button></div>
-    {aba === 'catalogo' && <Panel><ErrorBlock error={cat.error} />{cat.loading && !cat.data ? <Skeleton lines={5} /> : (cat.data?.recompensas || []).length === 0 ? <EmptyState icon="★" title="Nenhuma recompensa cadastrada" action={<button className="button primary" onClick={abrirNovo}>Cadastrar a primeira</button>}>Os alunos só veem recompensas ativas. Defina custo, estoque e validade.</EmptyState> :
+    {aba === 'catalogo' && <Panel><ErrorBlock error={cat.error} />{cat.loading && !cat.data ? <Skeleton lines={5} /> : (cat.data?.recompensas || []).length === 0 ? <EmptyState icon={<Icon name="star" size={1.6} />} title="Nenhuma recompensa cadastrada" action={<button className="button primary" onClick={abrirNovo}>Cadastrar a primeira</button>}>Os alunos só veem recompensas ativas. Defina custo, estoque e validade.</EmptyState> :
       <Table columns={['Recompensa', 'Custo', 'Estoque', 'Limite/aluno', 'Estabelecimento', 'Resgates', 'Status', 'Ações']} rows={cat.data.recompensas.map((r: any) => [
         <div><strong>{r.nome}</strong><br /><small className="muted">{r.categoria}</small></div>, money(r.custo), r.estoque === null ? 'Sem limite' : r.estoque, r.limite_por_cliente ?? '—', r.estabelecimento || '—', r.resgates,
         <StatusBadge value={r.ativo ? 'ativo' : 'inativo'} />,

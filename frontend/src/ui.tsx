@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { api } from './api';
+import { Icon } from './icons';
 
 export type ToastState = { message: string; kind?: 'error' | 'success' };
 export const toastEvent = new EventTarget();
 export function notify(message: string, kind: ToastState['kind'] = 'success') { toastEvent.dispatchEvent(new CustomEvent('toast', { detail: { message, kind } })); }
 export function PageTitle({ title, description, action }: { title: string; description?: string; action?: ReactNode }) { return <div className="page-heading"><div><h2>{title}</h2>{description && <p>{description}</p>}</div>{action}</div>; }
 export function Panel({ title, children, action }: { title?: string; children: ReactNode; action?: ReactNode }) { return <section className="panel">{(title || action) && <div className="panel-heading">{title && <h3>{title}</h3>}{action}</div>}{children}</section>; }
-export function Stat({ label, value, icon, caption }: { label: string; value: ReactNode; icon: string; caption?: string }) { return <div className="stat-card"><span className="stat-icon">{icon}</span><div><div className="stat-label">{label}</div><strong className="stat-value">{value}</strong>{caption && <small>{caption}</small>}</div></div>; }
+export function Stat({ label, value, icon, caption }: { label: string; value: ReactNode; icon: ReactNode; caption?: string }) { return <div className="stat-card"><span className="stat-icon">{icon}</span><div><div className="stat-label">{label}</div><strong className="stat-value">{value}</strong>{caption && <small>{caption}</small>}</div></div>; }
 export function Table({ columns, rows, empty = 'Nenhum registro encontrado.' }: { columns: string[]; rows: ReactNode[][]; empty?: string }) { return <div className="table-wrap"><table><thead><tr>{columns.map(c => <th key={c}>{c}</th>)}</tr></thead><tbody>{rows.length ? rows.map((row, i) => <tr key={i}>{row.map((c, j) => <td key={j}>{c}</td>)}</tr>) : <tr><td className="empty-cell" colSpan={columns.length}>{empty}</td></tr>}</tbody></table></div>; }
 export function useLoad<T>(path: string | null) { const [data, setData] = useState<T | null>(null); const [error, setError] = useState(''); const [loading, setLoading] = useState(true); const reload = useCallback(async () => { if (!path) return; setLoading(true); setError(''); try { setData(await api<T>(path)); } catch (e) { setError(e instanceof Error ? e.message : 'Erro ao carregar.'); } finally { setLoading(false); } }, [path]); useEffect(() => { void reload(); }, [reload]); return { data, error, loading, reload, setData }; }
 export function ErrorBlock({ error }: { error: string }) { return error ? <div className="alert error" role="alert">{error}</div> : null; }
@@ -24,7 +25,7 @@ export function Skeleton({ lines = 3, height = 18 }: { lines?: number; height?: 
 export function StatsSkeleton({ count = 4 }: { count?: number }) {
   return <div className="stats-grid" aria-busy="true" aria-label="Carregando">{Array.from({ length: count }, (_, i) => <div key={i} className="stat-card"><span className="skeleton" style={{ width: 42, height: 42, borderRadius: 12 }} /><div style={{ flex: 1 }}><span className="skeleton" style={{ height: 12, width: '60%' }} /><span className="skeleton" style={{ height: 24, width: '80%', marginTop: 8 }} /></div></div>)}</div>;
 }
-export function EmptyState({ icon = '◌', title, children, action }: { icon?: string; title: string; children?: ReactNode; action?: ReactNode }) {
+export function EmptyState({ icon = <Icon name="leaf" size={1.6} />, title, children, action }: { icon?: ReactNode; title: string; children?: ReactNode; action?: ReactNode }) {
   return <div className="empty-state"><span aria-hidden="true">{icon}</span><strong>{title}</strong>{children && <p>{children}</p>}{action}</div>;
 }
 export function Progress({ value, label, tone = 'green' }: { value: number; label: string; tone?: 'green' | 'gold' }) {
@@ -43,7 +44,7 @@ const W = 640, H = 260, PL = 46, PR = 12, PT = 14, PB = 38;
 /** Gráfico de barras ou linha em SVG. Tem título, unidade, legenda, estado vazio e tabela alternativa para leitores de tela. */
 export function Chart({ title, unit, data, kind = 'bar', color = '#176044', digits = 1 }: { title: string; unit: string; data: Ponto[]; kind?: 'bar' | 'line'; color?: string; digits?: number }) {
   const total = data.reduce((s, d) => s + d.value, 0);
-  if (!data.length || total === 0) return <EmptyState icon="▥" title="Sem registros neste recorte">Não há dados para exibir em “{title}”. Ajuste o período ou os filtros.</EmptyState>;
+  if (!data.length || total === 0) return <EmptyState icon={<Icon name="leaf" size={1.6} />} title="Sem registros neste recorte">Não há dados para exibir em “{title}”. Ajuste o período ou os filtros.</EmptyState>;
   const max = niceMax(Math.max(...data.map(d => d.value)));
   const iw = W - PL - PR, ih = H - PT - PB;
   const x = (i: number) => PL + (kind === 'bar' ? (iw / data.length) * (i + 0.5) : data.length === 1 ? iw / 2 : (iw / (data.length - 1)) * i);
