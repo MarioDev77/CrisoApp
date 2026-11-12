@@ -13,10 +13,9 @@
    Prisma). Antes do primeiro deploy rode localmente:
    `npx prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --exit-code`
    (precisa de um banco "shadow"; veja a doc do Prisma). Se acusar diferença, gere uma nova migração com `prisma migrate dev`.
-6. **IP do cliente / rate limit** — determine a cadeia de proxies observando a configuração real do serviço e logs controlados.
-   Só habilite cabeçalhos de IP confiáveis depois de impedir que clientes contornem o proxy e falsifiquem esses cabeçalhos.
-   Com `TRUSTED_PROXY=none`, limites por IP não atuam; limites por conta/e-mail continuam. Não escolha número de saltos nem
-   provedor sem confirmar a topologia implantada.
+6. **IP do cliente / rate limit** — leia `docs/RATE_LIMIT_E_IP.md` e rode `GET /api/diagnostico/ip` (Bearer `CRON_SECRET`) pelo
+   domínio da Vercel **e** direto no Railway antes de mudar `TRUSTED_PROXY`. O padrão `none` é seguro: não há limite por IP
+   enganado, a conta é protegida por contenção progressiva (com cookie de dispositivo) e a rota emite o alerta `ip_nao_identificado`.
 7. Teste no ambiente de teste (login, QR crédito/débito, resgate, painel admin) antes de apontar o domínio de produção.
 8. **Rollback:** Railway → Deployments → redeploy da versão anterior. Migrações são aditivas; para desfazer o schema restaure o backup.
 

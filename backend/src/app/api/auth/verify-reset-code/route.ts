@@ -15,7 +15,8 @@ export const POST = api(
   { auth: false, body, limites: [
     { nome: "reset-ip", por: "ip", max: 60, janelaSeg: 900 },
     { nome: "reset-codigo", por: "ip+email", max: 10, janelaSeg: 900, msg: "Muitas tentativas. Tente novamente em 15 minutos." },
-    { nome: "reset-email", por: "email", max: 10, janelaSeg: 900, msg: "Muitas tentativas. Tente novamente em 15 minutos." },
+    // Só um teto contra inundação: o limite real é por código (5 tentativas atômicas). Um limite baixo por e-mail deixaria um terceiro impedir a vítima de redefinir a senha.
+    { nome: "reset-email", por: "email", max: 60, janelaSeg: 900, msg: "Muitas tentativas. Tente novamente em 15 minutos." },
   ] },
   async ({ body }) => {
     const encontrado = await buscarUsuarioPorEmail(prisma(), body.email);

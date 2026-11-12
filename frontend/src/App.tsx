@@ -540,6 +540,7 @@ export function PrivacyPage() {
     <h2>4. Cookies</h2><p>Cookies são pequenos arquivos guardados no seu navegador. Esta é a lista completa do que o CrisoVerde usa hoje:</p>
     <div className="legal-table-wrap"><table className="legal-table"><thead><tr><th>Cookie</th><th>Para quê</th><th>Duração</th><th>Categoria</th></tr></thead><tbody>
       <tr><td><code>__Host-crisoverde_session</code></td><td>Mantém você autenticado. É HttpOnly (o JavaScript do site não lê), Secure e SameSite=Strict. Apagado ao sair da conta.</td><td>8 horas</td><td>Necessário</td></tr>
+      <tr><td><code>__Host-crisoverde_dispositivo</code></td><td>Marca este navegador como já usado por você depois de um login com sucesso. Serve só para que, se alguém tentar invadir sua conta errando a senha, você não fique bloqueado no seu aparelho de sempre. Guarda apenas um código assinado, sem e-mail nem IP. HttpOnly, Secure, SameSite=Strict. Criado ao entrar na conta.</td><td>30 dias</td><td>Necessário (segurança)</td></tr>
       <tr><td><code>{CONSENT_COOKIE}</code></td><td>Guarda a sua escolha sobre cookies (categorias e versão desta política). Não contém dado pessoal e não autentica ninguém. Secure em HTTPS, SameSite=Lax.</td><td>180 dias</td><td>Necessário</td></tr>
       {GOOGLE_LOGIN_ATIVO && <tr><td>Cookies do Google (ex.: <code>g_state</code>)</td><td>Funcionamento do botão “Entrar com Google”. Só são criados se você permitir o login com Google.</td><td>Definida pelo Google</td><td>Serviços externos (consentimento)</td></tr>}
     </tbody></table></div>

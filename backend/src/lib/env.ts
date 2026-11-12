@@ -17,7 +17,10 @@ const schema = z.object({
   CRON_SECRET: z.string().min(32).optional(),
   ADMIN_EMAIL: z.string().optional(),
   ADMIN_SENHA: z.string().optional(),
-  TRUSTED_PROXY: z.enum(["none", "cloudflare", "hops"]).default("none"),
+  // none: nenhum cabeçalho é confiável (IP desconhecido, com alerta). railway: X-Real-IP (a borda do Railway sobrescreve).
+  // vercel: cabeçalho CLIENT_IP_HEADER, aceito SÓ com ORIGIN_SECRET válido. cloudflare/hops: ver docs/OPERACAO_E_SEGURANCA.md.
+  TRUSTED_PROXY: z.enum(["none", "cloudflare", "hops", "railway", "vercel"]).default("none"),
+  CLIENT_IP_HEADER: z.string().regex(/^[a-z0-9-]{2,64}$/).default("x-forwarded-for"),
   TRUSTED_PROXY_HOPS: z.coerce.number().int().min(1).max(5).default(1),
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: z.string().optional(),
@@ -44,6 +47,7 @@ export function env(): Env {
       const ausentes = obrigatorias.filter((k) => !r.data[k]);
       if (ausentes.length) throw new Error(`Configuração de ambiente inválida: ${ausentes.join(", ")}`);
     }
+    if (r.data.TRUSTED_PROXY === "vercel" && !r.data.ORIGIN_SECRET) throw new Error("Configuração de ambiente inválida: TRUSTED_PROXY=vercel exige ORIGIN_SECRET");
     if (!r.data.JWT_SECRET && !r.data.SESSION_SECRET) throw new Error("Configuração de ambiente inválida: SESSION_SECRET ou JWT_SECRET");
     cached = r.data;
   }

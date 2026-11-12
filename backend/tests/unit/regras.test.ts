@@ -53,10 +53,11 @@ describe("IP do cliente (só cabeçalhos confiáveis)", () => {
     expect(clientIp(new Headers())).toBe("desconhecido");
   });
 
-  it("não usa IP desconhecido para aplicar um limite compartilhado", async () => {
-    const { deveAplicarLimiteIp } = await import("../../src/lib/api");
-    expect(deveAplicarLimiteIp("desconhecido")).toBe(false);
-    expect(deveAplicarLimiteIp("203.0.113.9")).toBe(true);
+  it("sem IP confiável não pula o limite em silêncio: usa balde global com teto maior", async () => {
+    const { regraParaIp, FATOR_IP_DESCONHECIDO } = await import("../../src/lib/api");
+    const regra = { nome: "x", max: 20, janelaSeg: 900 };
+    expect(regraParaIp(regra, true).max).toBe(20);
+    expect(regraParaIp(regra, false).max).toBe(20 * FATOR_IP_DESCONHECIDO);
   });
 });
 
@@ -65,7 +66,7 @@ describe("limite por e-mail", () => {
     const { limitar } = await import("../../src/lib/rate-limit");
     const { createHash } = await import("node:crypto");
     prismaMock.queryRaw.mockResolvedValueOnce([{ contagem: 1, ttl: 900 }]);
-    await limitar({ nome: "login-email", max: 20, janelaSeg: 900 }, "USER@Example.Test", true);
+    await limitar({ nome: "login-email", max: 20, janelaSeg: 900 }, "USER@Example.Test");
     const chaveGravada = prismaMock.queryRaw.mock.calls.at(-1)?.[1];
     expect(chaveGravada).toMatch(/^login-email:[a-f0-9]{32}$/);
     expect(chaveGravada).not.toContain("user@example.test");

@@ -11,6 +11,7 @@
 | Cookie | Categoria | Duração | Observação |
 |---|---|---|---|
 | `__Host-crisoverde_session` (dev: `crisoverde_session`) | Necessário | 8 h | Criado pelo backend. HttpOnly, Secure, SameSite=Strict. Independente do consentimento. |
+| `__Host-crisoverde_dispositivo` | Necessário (segurança) | 30 dias | Criado pelo backend no login com sucesso. HttpOnly, Secure, SameSite=Strict. Só HMACs assinados (sem e-mail/IP); isenta o dono da contenção de conta durante um ataque. Não autentica. |
 | `cv_cookie_consent` | Necessário | 180 dias | Guarda só a escolha. Path=/, SameSite=Lax, Secure em HTTPS, sem `Domain`. Não autentica ninguém e não contém dado pessoal. |
 | `g_state` (do script do Google, no nosso domínio) | Serviços externos | definida pelo Google | **Só existe se o login com Google estiver ativo e permitido.** Hoje não existe. |
 

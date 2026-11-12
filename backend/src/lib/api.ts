@@ -4,7 +4,7 @@ import { mfaValidado, autenticar, exigir, type Perfil, type Principal } from "./
 import { HttpError } from "./errors";
 import { mfaObrigatorio } from "./mfa";
 import { limitar, type Regra } from "./rate-limit";
-import { clientIp } from "./client-ip";
+import { alertarIpNaoConfiavel, resolverIp } from "./client-ip";
 import { log } from "./log";
 
 const MAX_BODY = 10 * 1024;
@@ -17,7 +17,7 @@ export type Opcoes<B, Q> = {
   query?: ZodType<Q>;
   limites?: (Regra & { por: Chave })[];
 };
-export type Ctx<B, Q, P> = { req: NextRequest; body: B; query: Q; params: P; usuario: Principal; ip: string };
+export type Ctx<B, Q, P> = { req: NextRequest; body: B; query: Q; params: P; usuario: Principal; ip: string; ipConfiavel: boolean };
 
 const json = (status: number, corpo: unknown, headers?: HeadersInit) =>
   NextResponse.json(corpo, { status, headers: { "Cache-Control": "no-store", ...headers } });
@@ -52,7 +52,14 @@ async function lerCorpo(req: NextRequest): Promise<unknown> {
   }
 }
 
-export const deveAplicarLimiteIp = (ip: string) => ip !== "desconhecido";
+/** Fator do balde global usado quando o IP não é confiável: protege contra inundação sem punir um IP específico. */
+export const FATOR_IP_DESCONHECIDO = 10;
+/**
+ * Regra por IP: com IP confiável vale como está. Sem IP confiável NÃO se pula silenciosamente (a proteção seria
+ * falsa): usa-se um balde global com teto maior, e a rota emite alerta operacional. Regras por IP+e-mail são
+ * desligadas nesse caso (viraria um balde por e-mail para o mundo todo: qualquer um bloquearia qualquer conta).
+ */
+export const regraParaIp = (l: Regra, ipConfiavel: boolean): Regra => (ipConfiavel ? l : { ...l, max: l.max * FATOR_IP_DESCONHECIDO });
 
 export function api<B = unknown, Q = unknown, P = Record<string, string>>(
   opts: Opcoes<B, Q>,
@@ -63,10 +70,12 @@ export function api<B = unknown, Q = unknown, P = Record<string, string>>(
     const rid = crypto.randomUUID().slice(0, 8);
     let status = 500;
     try {
-      const ip = clientIp(req.headers);
+      const info = resolverIp(req.headers);
+      const { ip, confiavel: ipConfiavel } = info;
+      alertarIpNaoConfiavel(info);
       // 1) limite por IP antes de qualquer trabalho caro
       for (const l of opts.limites ?? []) {
-        if (l.por === "ip" && deveAplicarLimiteIp(ip)) await limitar(l, ip);
+        if (l.por === "ip") await limitar(regraParaIp(l, ipConfiavel), ip);
       }
 
       const usuario = opts.auth ? await autenticar(req) : (null as unknown as Principal);
@@ -86,7 +95,7 @@ export function api<B = unknown, Q = unknown, P = Record<string, string>>(
 
       for (const l of opts.limites ?? []) {
         if (l.por === "usuario" && usuario) await limitar(l, `${usuario.tipo}:${usuario.id}`);
-        if (l.por === "ip+email") {
+        if (l.por === "ip+email" && ipConfiavel) {
           const email = String((body as { email?: string } | undefined)?.email ?? "").toLowerCase();
           await limitar(l, `${ip}|${email}`);
         }
@@ -97,7 +106,7 @@ export function api<B = unknown, Q = unknown, P = Record<string, string>>(
       }
 
       const params = (await rota.params) ?? ({} as P);
-      const out = await fn({ req, body, query, params, usuario, ip });
+      const out = await fn({ req, body, query, params, usuario, ip, ipConfiavel });
       if (out instanceof Response) {
         status = out.status;
         return out;

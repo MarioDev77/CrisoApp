@@ -5,36 +5,25 @@ import { chaveRateLimit } from "./crypto";
 import { env } from "./env";
 
 export type Regra = { nome: string; max: number; janelaSeg: number; msg?: string };
+export type Contagem = { contagem: number; ttl: number };
 
 /**
- * Janela fixa distribuída: o contador vive no PostgreSQL, então é compartilhado entre
- * instâncias e sobrevive a deploys. Uma única instrução atômica (upsert) por verificação.
+ * FONTE ÚNICA DE VERDADE: PostgreSQL. Não há contador em memória (antes havia um Map por processo que divergia
+ * do banco e bloqueava indevidamente). Cada operação é UMA instrução atômica, então vale entre instâncias e
+ * processos. O relógio é o do banco (now()), nunca o do processo.
+ * A chave gravada é HMAC: nem IP nem e-mail aparecem em claro na tabela rate_limits.
  */
-const memoria = new Map<string, { contagem: number; expira: number }>();
-const MAX_CHAVES_MEMORIA = 5000;
-
-export async function limitar(regra: Regra, id: string, _ocultarId = false): Promise<void> {
-  const chaveLogica = `${regra.nome}:${id}`;
-  const agora = Date.now();
-  let local = memoria.get(chaveLogica);
-  if (!local || local.expira <= agora) {
-    local = { contagem: 0, expira: agora + regra.janelaSeg * 1000 };
-    if (memoria.size >= MAX_CHAVES_MEMORIA) {
-      for (const [k, v] of memoria) if (v.expira <= agora) memoria.delete(k);
-      if (memoria.size >= MAX_CHAVES_MEMORIA) memoria.delete(memoria.keys().next().value!);
-    }
-    memoria.set(chaveLogica, local);
-  }
-  local.contagem++;
-  if (local.contagem > regra.max) throw new HttpError(429, regra.msg ?? "Muitas requisições. Tente novamente em instantes.", { retryAfter: Math.max(1, Math.ceil((local.expira - agora) / 1000)) });
-
-  // A chave persistida é fixa e não revela IP, e-mail ou identificador de conta.
+function chavePersistida(nome: string, id: string): string {
+  const logica = `${nome}:${id}`;
   const e = env();
-  const identificador = e.DATA_ENCRYPTION_KEYS && e.BLIND_INDEX_KEY
-    ? chaveRateLimit(chaveLogica)
-    : createHash("sha256").update(chaveLogica.toLowerCase()).digest("hex").slice(0, 32);
-  const chave = `${regra.nome}:${identificador}`;
-  const rows = await prisma().$queryRaw<{ contagem: number; ttl: number }[]>`
+  const ident = e.DATA_ENCRYPTION_KEYS && e.BLIND_INDEX_KEY ? chaveRateLimit(logica) : createHash("sha256").update(logica.toLowerCase()).digest("hex").slice(0, 32);
+  return `${nome}:${ident}`;
+}
+
+/** Soma 1 à janela (cria ou renova se vencida) e devolve a contagem. Não lança: quem decide é o chamador. */
+export async function contar(regra: Pick<Regra, "nome" | "janelaSeg">, id: string): Promise<Contagem> {
+  const chave = chavePersistida(regra.nome, id);
+  const rows = await prisma().$queryRaw<Contagem[]>`
     INSERT INTO rate_limits (chave, contagem, expira_em)
     VALUES (${chave}, 1, now() + make_interval(secs => ${regra.janelaSeg}))
     ON CONFLICT (chave) DO UPDATE SET
@@ -42,13 +31,38 @@ export async function limitar(regra: Regra, id: string, _ocultarId = false): Pro
       expira_em = CASE WHEN rate_limits.expira_em <= now()
                        THEN now() + make_interval(secs => ${regra.janelaSeg})
                        ELSE rate_limits.expira_em END
-    RETURNING contagem, CEIL(EXTRACT(EPOCH FROM (expira_em - now())))::int AS ttl`;
-  const r = rows[0];
-  if (r.contagem > regra.max) {
-    throw new HttpError(429, regra.msg ?? "Muitas requisições. Tente novamente em instantes.", {
-      retryAfter: Math.max(1, r.ttl),
-    });
-  }
+    RETURNING contagem, GREATEST(1, CEIL(EXTRACT(EPOCH FROM (expira_em - now()))))::int AS ttl`;
+  return rows[0];
+}
+
+export const msgPadrao = "Muitas requisições. Tente novamente em instantes.";
+
+/** Conta e lança 429 com Retry-After (segundos restantes da janela) quando passa do máximo. */
+export async function limitar(regra: Regra, id: string, _legado = false): Promise<Contagem> {
+  const r = await contar(regra, id);
+  if (r.contagem > regra.max) throw new HttpError(429, regra.msg ?? msgPadrao, { retryAfter: Math.max(1, r.ttl) });
+  return r;
+}
+
+/** Devolve 1 tentativa (ex.: login que deu certo não conta como falha). Nunca fica abaixo de zero. */
+export async function estornar(regra: Pick<Regra, "nome">, id: string): Promise<void> {
+  const chave = chavePersistida(regra.nome, id);
+  await prisma().$executeRaw`UPDATE rate_limits SET contagem = GREATEST(contagem - 1, 0) WHERE chave = ${chave} AND expira_em > now()`;
+}
+
+/** Zera o contador (ex.: senha correta prova que quem tenta é o dono). */
+export async function zerar(regra: Pick<Regra, "nome">, id: string): Promise<void> {
+  const chave = chavePersistida(regra.nome, id);
+  await prisma().$executeRaw`DELETE FROM rate_limits WHERE chave = ${chave}`;
+}
+
+/** Prolonga a janela atual (contenção progressiva). Devolve os segundos restantes. */
+export async function estenderJanela(regra: Pick<Regra, "nome">, id: string, segundos: number): Promise<number> {
+  const chave = chavePersistida(regra.nome, id);
+  const rows = await prisma().$queryRaw<{ ttl: number }[]>`
+    UPDATE rate_limits SET expira_em = now() + make_interval(secs => ${segundos}) WHERE chave = ${chave}
+    RETURNING GREATEST(1, CEIL(EXTRACT(EPOCH FROM (expira_em - now()))))::int AS ttl`;
+  return rows[0]?.ttl ?? segundos;
 }
 
 /** Remove contadores vencidos; executado pelo endpoint de manutenção protegido. */
