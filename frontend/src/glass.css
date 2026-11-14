@@ -1,0 +1,131 @@
+/* ===== Efeito "vidro" (Liquid Glass) nas barras e botões =====
+   Equivalente web do expo-glass-effect: translucidez + blur + brilho na borda.
+   Importado depois de styles.css, então só sobrescreve a aparência (sem mudar layout). */
+
+:root{
+  --glass-blur:blur(18px) saturate(180%);
+  --glass-edge:rgba(255,255,255,.55);
+  --glass-shine:inset 0 1px 0 rgba(255,255,255,.55);
+}
+
+/* Fundo com um pouco de cor para o vidro ter o que desfocar */
+body{
+  background:
+    radial-gradient(900px 520px at 12% -8%,rgba(46,160,105,.16),transparent 60%),
+    radial-gradient(760px 480px at 100% 12%,rgba(209,173,75,.13),transparent 60%),
+    #f4f7f5;
+  background-attachment:fixed;
+}
+
+/* ---------- Barra superior ---------- */
+.topbar{
+  position:sticky;top:0;z-index:6;
+  background:rgba(255,255,255,.58);
+  -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);
+  border-bottom:1px solid var(--glass-edge);
+  box-shadow:0 8px 30px rgba(22,57,41,.07),var(--glass-shine);
+}
+
+/* ---------- Barra lateral / barra inferior no celular ---------- */
+.sidebar{
+  background:linear-gradient(160deg,rgba(24,86,60,.78),rgba(12,40,28,.86));
+  -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);
+  border-right:1px solid rgba(255,255,255,.14);
+  box-shadow:6px 0 30px rgba(9,32,21,.16),inset 0 1px 0 rgba(255,255,255,.22);
+}
+@media(min-width:561px){
+  .sidebar nav,.sidebar-bottom{background:transparent}
+}
+.nav-item{border:1px solid transparent;transition:background .15s,border-color .15s,box-shadow .15s}
+.nav-item:hover,.nav-item.active{
+  background:rgba(255,255,255,.14);
+  border-color:rgba(255,255,255,.22);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  box-shadow:var(--glass-shine);
+}
+.nav-item.active{box-shadow:var(--glass-shine),inset 3px 0 #d5b64f}
+.nav-item.logout:hover{background:rgba(160,52,42,.55)}
+@media(max-width:560px){
+  .sidebar{
+    border-right:0;border-top:1px solid rgba(255,255,255,.22);
+    box-shadow:0 -8px 28px rgba(9,32,21,.2),inset 0 1px 0 rgba(255,255,255,.25);
+  }
+  .sidebar nav .nav-item.active{box-shadow:var(--glass-shine),inset 0 3px var(--gold)}
+}
+
+/* ---------- Botões ---------- */
+.button,.mobile-logout,.tabs button,.cookie-choice{
+  -webkit-backdrop-filter:blur(10px) saturate(160%);backdrop-filter:blur(10px) saturate(160%);
+  transition:transform .12s,background .15s,border-color .15s,box-shadow .15s;
+}
+.button.primary{
+  background:linear-gradient(180deg,rgba(44,142,101,.92),rgba(23,96,68,.92));
+  border-color:rgba(255,255,255,.35);
+  box-shadow:var(--glass-shine),0 8px 20px rgba(23,96,68,.28);
+}
+.button.primary:hover:not(:disabled){
+  background:linear-gradient(180deg,rgba(52,156,112,.95),rgba(26,108,76,.95));
+  box-shadow:var(--glass-shine),0 10px 24px rgba(23,96,68,.34);
+}
+.button.subtle,.mobile-logout,.cookie-choice,.tabs button{
+  background:rgba(255,255,255,.55);
+  border-color:rgba(255,255,255,.75);
+  box-shadow:var(--glass-shine),0 0 0 1px rgba(23,96,68,.12),0 4px 14px rgba(22,57,41,.06);
+}
+.button.subtle:hover:not(:disabled),.mobile-logout:hover,.cookie-choice:hover,.tabs button:hover{
+  background:rgba(255,255,255,.82);border-color:#fff;
+}
+.button.warning{
+  background:rgba(255,243,208,.66);border-color:rgba(241,217,148,.9);
+  box-shadow:var(--glass-shine),0 4px 14px rgba(128,95,9,.1);
+}
+.button.danger{
+  background:rgba(255,232,229,.66);border-color:rgba(240,190,184,.9);
+  box-shadow:var(--glass-shine),0 4px 14px rgba(165,56,46,.1);
+}
+.tabs button[aria-selected="true"]{
+  background:linear-gradient(180deg,rgba(44,142,101,.92),rgba(23,96,68,.92));
+  border-color:rgba(255,255,255,.35);color:#fff;
+}
+.close-button{
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  background:rgba(239,244,240,.7);box-shadow:var(--glass-shine);
+}
+
+/* Botão dourado das telas de login/cadastro (fundo escuro) */
+.legacy-submit,.legacy-recovery .button.primary{
+  background:linear-gradient(180deg,rgba(226,190,74,.95),rgba(201,162,39,.95));
+  border:1px solid rgba(255,255,255,.4);
+  box-shadow:var(--glass-shine),0 8px 22px rgba(201,162,39,.28);
+}
+.legacy-submit:hover:not(:disabled),.legacy-recovery .button.primary:hover:not(:disabled){
+  background:linear-gradient(180deg,rgba(236,200,86,.98),rgba(216,178,58,.98));
+}
+.legacy-field{
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12);
+}
+
+/* Aviso de cookies (barra flutuante) */
+.cookie-banner{
+  background:rgba(255,255,255,.7);
+  -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);
+  border-color:var(--glass-edge);
+  box-shadow:0 18px 55px rgba(19,50,34,.2),var(--glass-shine);
+}
+
+/* ---------- Acessibilidade e compatibilidade ---------- */
+/* Sem suporte a blur: cores sólidas, como antes. */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .topbar{background:#fff}
+  .sidebar{background:#123b2a}
+  .cookie-banner{background:#fff}
+  .button.subtle,.mobile-logout,.cookie-choice,.tabs button{background:#fff}
+}
+/* Quem pediu menos transparência no sistema recebe superfícies opacas. */
+@media(prefers-reduced-transparency:reduce){
+  .topbar,.cookie-banner{background:#fff;-webkit-backdrop-filter:none;backdrop-filter:none}
+  .sidebar{background:#123b2a;-webkit-backdrop-filter:none;backdrop-filter:none}
+  .button,.mobile-logout,.tabs button,.cookie-choice,.nav-item:hover,.nav-item.active,.legacy-field,.close-button{-webkit-backdrop-filter:none;backdrop-filter:none}
+  .button.subtle,.mobile-logout,.cookie-choice,.tabs button{background:#fff}
+}
