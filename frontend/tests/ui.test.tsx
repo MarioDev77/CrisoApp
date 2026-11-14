@@ -3,6 +3,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { CookieConsent, PrivacyPage } from '../src/App';
+import { CountUp } from '../src/ui';
 import { CATEGORIA_EM_USO, CONSENT_COOKIE, OPEN_SETTINGS_EVENT, readConsent } from '../src/consent';
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -108,5 +109,16 @@ describe('página /privacidade', () => {
     expect(t).not.toContain('Cookies do Google'); // linha da tabela só aparece com o Google ativo
     expect(t).toContain('Como retirar o consentimento');
     expect(botoes()).toContain('Preferências de cookies');
+  });
+});
+
+describe('CountUp', () => {
+  it('expõe o valor final para leitores de tela e termina no valor final', async () => {
+    const el = document.createElement('div'); document.body.appendChild(el); const root = createRoot(el);
+    await act(async () => { root.render(<CountUp value={9.75} format={v => `R$ ${v.toFixed(2)}`} duration={20} />); });
+    expect(el.querySelector('.sr-only')?.textContent).toBe('R$ 9.75');
+    await act(async () => { await new Promise(r => setTimeout(r, 120)); });
+    expect(el.querySelector('[aria-hidden="true"]')?.textContent).toBe('R$ 9.75');
+    await act(async () => { root.unmount(); }); el.remove();
   });
 });

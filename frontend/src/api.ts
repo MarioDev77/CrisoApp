@@ -6,7 +6,7 @@ export async function api<T = any>(path: string, options: RequestInit = {}): Pro
     headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers },
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new ApiError(data.mensagem || 'Não foi possível concluir a solicitação.', response.status, data);
+  if (!response.ok) throw new ApiError(data.mensagem || 'Não conseguimos concluir agora. Confira sua conexão e tente de novo.', response.status, data);
   return data as T;
 }
 export const post = <T = any>(path: string, body?: unknown) => api<T>(path, { method: 'POST', body: JSON.stringify(body ?? {}) });

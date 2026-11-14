@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { api } from './api';
 import { Icon } from './icons';
 
@@ -9,7 +9,7 @@ export function PageTitle({ title, description, action }: { title: string; descr
 export function Panel({ title, children, action }: { title?: string; children: ReactNode; action?: ReactNode }) { return <section className="panel">{(title || action) && <div className="panel-heading">{title && <h3>{title}</h3>}{action}</div>}{children}</section>; }
 export function Stat({ label, value, icon, caption }: { label: string; value: ReactNode; icon: ReactNode; caption?: string }) { return <div className="stat-card"><span className="stat-icon">{icon}</span><div><div className="stat-label">{label}</div><strong className="stat-value">{value}</strong>{caption && <small>{caption}</small>}</div></div>; }
 export function Table({ columns, rows, empty = 'Nada por aqui ainda.' }: { columns: string[]; rows: ReactNode[][]; empty?: string }) { return <div className="table-wrap"><table><thead><tr>{columns.map(c => <th key={c}>{c}</th>)}</tr></thead><tbody>{rows.length ? rows.map((row, i) => <tr key={i}>{row.map((c, j) => <td key={j}>{c}</td>)}</tr>) : <tr><td className="empty-cell" colSpan={columns.length}>{empty}</td></tr>}</tbody></table></div>; }
-export function useLoad<T>(path: string | null) { const [data, setData] = useState<T | null>(null); const [error, setError] = useState(''); const [loading, setLoading] = useState(true); const reload = useCallback(async () => { if (!path) return; setLoading(true); setError(''); try { setData(await api<T>(path)); } catch (e) { setError(e instanceof Error ? e.message : 'Erro ao carregar.'); } finally { setLoading(false); } }, [path]); useEffect(() => { void reload(); }, [reload]); return { data, error, loading, reload, setData }; }
+export function useLoad<T>(path: string | null) { const [data, setData] = useState<T | null>(null); const [error, setError] = useState(''); const [loading, setLoading] = useState(true); const reload = useCallback(async () => { if (!path) return; setLoading(true); setError(''); try { setData(await api<T>(path)); } catch (e) { setError(e instanceof Error ? e.message : 'Não conseguimos carregar agora. Tente de novo em instantes.'); } finally { setLoading(false); } }, [path]); useEffect(() => { void reload(); }, [reload]); return { data, error, loading, reload, setData }; }
 export function ErrorBlock({ error }: { error: string }) { return error ? <div className="alert error" role="alert">{error}</div> : null; }
 export function LoadingBlock() { return <div className="loading-inline"><span className="spinner" />Buscando seus dados…</div>; }
 export function StatusBadge({ value }: { value: string }) { return <span className={`badge badge-${String(value).toLowerCase().replace(/[^a-z0-9]/g, '-')}`}>{value}</span>; }
@@ -64,4 +64,26 @@ export function Chart({ title, unit, data, kind = 'bar', color = '#176044', digi
     </svg>
     <table className="sr-only"><caption>{title}</caption><thead><tr><th>Período</th><th>{unit}</th></tr></thead><tbody>{data.map((d, i) => <tr key={i}><td>{d.label}</td><td>{fmtNum(d.value, digits)}</td></tr>)}</tbody></table>
   </figure>;
+}
+
+/** Número que "sobe" até o valor ao aparecer (e entre valores, se mudar). Respeita "reduzir movimento"; leitores de tela recebem só o valor final. */
+export function CountUp({ value, format, duration = 900 }: { value: unknown; format: (v: number) => string; duration?: number }) {
+  const alvo = Number(value || 0);
+  const [atual, setAtual] = useState(0);
+  const origem = useRef(0);
+  useEffect(() => {
+    const reduz = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduz || typeof requestAnimationFrame !== 'function' || !Number.isFinite(alvo)) { origem.current = alvo; setAtual(alvo); return; }
+    const de = origem.current; let t0 = -1; let id = 0;
+    const passo = (agora: number) => {
+      if (t0 < 0) t0 = agora;
+      const p = Math.max(0, Math.min(1, (agora - t0) / duration));
+      const v = de + (alvo - de) * (1 - Math.pow(1 - p, 3));
+      origem.current = v; setAtual(v);
+      if (p < 1) id = requestAnimationFrame(passo);
+    };
+    id = requestAnimationFrame(passo);
+    return () => cancelAnimationFrame(id);
+  }, [alvo, duration]);
+  return <><span aria-hidden="true">{format(atual)}</span><span className="sr-only">{format(alvo)}</span></>;
 }

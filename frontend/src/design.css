@@ -121,7 +121,7 @@ tbody tr:nth-child(even):not(:hover){background:#f8fbf9}
 @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .content-area>*{animation:rise .35s ease-out both}
 .content-area>*:nth-child(2){animation-delay:.05s}.content-area>*:nth-child(3){animation-delay:.1s}
-.hero-value{animation:rise .5s .1s ease-out both}
+
 .qr-center svg{animation:rise .4s ease-out both}
 .button:active:not(:disabled){transform:translateY(0) scale(.98)}
 /* Login e cadastro no mesmo verde vivo, mantendo logo, splash e dourado */
@@ -130,3 +130,8 @@ tbody tr:nth-child(even):not(:hover){background:#f8fbf9}
 .legacy-field:focus-within{border-color:#e3c25f;box-shadow:0 0 0 3px rgba(227,194,95,.25)}
 .legacy-label,.legacy-sub{color:rgba(240,251,245,.78)}
 .legacy-leaves{opacity:.14}
+
+/* Motivo próprio: a "Crisomoeda" (moeda com folha) repetida, esmaecendo para a esquerda */
+.hero-balance{position:relative;overflow:hidden;isolation:isolate}
+.hero-balance::before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;background:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='132'%20height='132'%20viewBox='0%200%20132%20132'%3E%3Cg%20fill='none'%20stroke='white'%20stroke-opacity='.13'%20stroke-width='1.5'%3E%3Ccircle%20cx='66'%20cy='66'%20r='28'/%3E%3Ccircle%20cx='66'%20cy='66'%20r='21'%20stroke-dasharray='2%204'/%3E%3C/g%3E%3Cpath%20d='M66%2050c-11%206-14%2020-5%2031%2011-2%2020-14%205-31z'%20fill='white'%20fill-opacity='.11'/%3E%3Cpath%20d='M66%2052v26'%20stroke='white'%20stroke-opacity='.16'%20stroke-width='1.2'/%3E%3C/svg%3E") right center/132px 132px;-webkit-mask-image:linear-gradient(90deg,transparent 30%,#000 100%);mask-image:linear-gradient(90deg,transparent 30%,#000 100%)}
+.empty-state>span{display:grid;place-items:center;width:64px;height:64px;border-radius:50%;background:var(--green-pale);color:var(--green);box-shadow:inset 0 0 0 1px rgba(14,123,78,.18),0 0 0 8px rgba(14,123,78,.06)}

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon, MaterialIcon } from './icons';
 import { ApiError, dateTime, materialLabels, materials, money, post } from './api';
-import { EmptyState, ErrorBlock, formatCode, fmtNum, newKey, notify, PageTitle, Panel, Progress, Skeleton, Stat, StatsSkeleton, StatusBadge, Table, useLoad } from './ui';
+import { CountUp, EmptyState, ErrorBlock, formatCode, fmtNum, newKey, notify, PageTitle, Panel, Progress, Skeleton, Stat, StatsSkeleton, StatusBadge, Table, useLoad } from './ui';
 
 const tipoRotulo: Record<string, string> = { reciclagem: 'Reciclagem', resgate_pix: 'Resgate em dinheiro', resgate_recompensa: 'Recompensa', desconto_loja: 'Desconto na loja', estorno: 'Estorno', outro: 'Movimentação' };
 
@@ -28,7 +28,7 @@ export function StudentDashboard({ nome, onNavigate }: { nome: string; onNavigat
       <section className="hero-balance" aria-label="Seu saldo e meta do mês">
         <div>
           <span className="hero-eyebrow">Saldo disponível</span>
-          <strong className="hero-value">{money(x.carteira.saldo)}</strong>
+          <strong className="hero-value"><CountUp value={x.carteira.saldo} format={money} /></strong>
           <span className="hero-sub">{x.carteira.saldo_pendente > 0 ? `+ ${money(x.carteira.saldo_pendente)} em carência` : 'em Crisomoedas'}</span>
           <div className="hero-actions"><button className="button primary" onClick={() => onNavigate('qrcode')}>Ler QR Code</button><button className="button subtle" onClick={() => onNavigate('recompensas')}>Ver recompensas</button></div>
         </div>
