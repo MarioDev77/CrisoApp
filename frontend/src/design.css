@@ -53,3 +53,28 @@ th{color:var(--text-3)}
 .hero-goal .progress-fill{background:var(--gold)}
 .hero-goal small{color:#d3e6da;line-height:1.5;font-size:.8rem}
 @media(max-width:820px){.hero-balance{grid-template-columns:minmax(0,1fr);padding:var(--sp-5)}.hero-goal{border-left:0;border-top:1px solid rgba(255,255,255,.2);padding:var(--sp-4) 0 0}}
+
+/* ===== Vidro verde (estilo Liquid Glass, na cor do app): saturado, não desbotado ===== */
+:root{--glass-green:rgba(23,96,68,.86);--glass-green-deep:rgba(15,52,37,.9);--sheen:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,0) 45%)}
+body{background:
+  radial-gradient(820px 520px at 8% -6%,rgba(46,160,105,.30),transparent 60%),
+  radial-gradient(700px 460px at 100% 10%,rgba(209,173,75,.20),transparent 60%),
+  radial-gradient(900px 600px at 50% 110%,rgba(23,96,68,.18),transparent 60%),#f1f6f3;background-attachment:fixed}
+.topbar{background:var(--sheen),linear-gradient(135deg,var(--glass-green),var(--glass-green-deep));color:#fff;border-bottom:1px solid rgba(255,255,255,.22);box-shadow:0 10px 30px rgba(15,52,37,.22),inset 0 1px 0 rgba(255,255,255,.35)}
+.topbar h1,.user-chip strong{color:#fff}
+.topbar .role-kicker{color:#b9dcc6}.topbar .user-chip span{color:#d3e9dc}
+.topbar .avatar{background:rgba(255,255,255,.2);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+.topbar .mobile-logout{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.35);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
+.topbar .mobile-logout:hover{background:rgba(255,255,255,.26);border-color:#fff}
+.topbar .mobile-logout:focus-visible{outline-color:#fff}
+.sidebar{background:var(--sheen),linear-gradient(160deg,rgba(27,110,77,.9),rgba(12,42,29,.94))}
+.button,.tabs button,.cookie-choice{-webkit-backdrop-filter:blur(10px) saturate(170%);backdrop-filter:blur(10px) saturate(170%)}
+.button.primary{background:var(--sheen),linear-gradient(180deg,#25855d,#176044);border-color:rgba(255,255,255,.3);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 8px 20px rgba(23,96,68,.32)}
+.button.primary:hover:not(:disabled){background:var(--sheen),linear-gradient(180deg,#2c9467,#1a6e4d)}
+.button.subtle,.cookie-choice,.tabs button{background:rgba(226,241,232,.78);border-color:rgba(23,96,68,.28);color:var(--green-dark);box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
+.button.subtle:hover:not(:disabled),.cookie-choice:hover,.tabs button:hover{background:rgba(207,232,217,.92);border-color:rgba(23,96,68,.5)}
+.tabs button[aria-selected="true"]{background:var(--sheen),linear-gradient(180deg,#25855d,#176044);color:#fff}
+.cookie-banner{background:rgba(236,246,240,.8);border-color:rgba(23,96,68,.25)}
+.hero-balance .button.primary{background:linear-gradient(180deg,#e3c25f,#d1ad4b)}
+.hero-balance .button.subtle{background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.4)}
+@media(prefers-reduced-transparency:reduce){.topbar{background:#176044}.sidebar{background:#123b2a}.cookie-banner{background:#eef6f1}.button,.tabs button,.cookie-choice{-webkit-backdrop-filter:none;backdrop-filter:none}}
