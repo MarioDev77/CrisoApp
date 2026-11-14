@@ -25,18 +25,26 @@ export function StudentDashboard({ nome, onNavigate }: { nome: string; onNavigat
     <PageTitle title={`Olá, ${nome.split(' ')[0]}`} description="Acompanhe suas Crisomoedas, sua reciclagem e suas recompensas." action={<button className="button subtle" onClick={() => void d.reload()} disabled={d.loading}>Atualizar</button>} />
     <ErrorBlock error={d.error} />
     {d.loading && !x ? <><StatsSkeleton /><Panel><Skeleton lines={4} /></Panel></> : x && <>
+      <section className="hero-balance" aria-label="Seu saldo e meta do mês">
+        <div>
+          <span className="hero-eyebrow">Saldo disponível</span>
+          <strong className="hero-value">{money(x.carteira.saldo)}</strong>
+          <span className="hero-sub">{x.carteira.saldo_pendente > 0 ? `+ ${money(x.carteira.saldo_pendente)} em carência` : 'em Crisomoedas'}</span>
+          <div className="hero-actions"><button className="button primary" onClick={() => onNavigate('qrcode')}>Ler QR Code</button><button className="button subtle" onClick={() => onNavigate('recompensas')}>Ver recompensas</button></div>
+        </div>
+        <div className="hero-goal">
+          <span className="hero-eyebrow">Meta de reciclagem do mês</span>
+          <strong>{fmtNum(x.meta_mensal.reciclado_kg)} kg de {fmtNum(x.meta_mensal.meta_kg)} kg · {x.meta_mensal.percentual}%</strong>
+          <Progress value={x.meta_mensal.percentual} label="Progresso da meta mensal de reciclagem" tone="gold" />
+          <small>{x.meta_mensal.atingida ? 'Meta do mês atingida. Parabéns!' : x.meta_mensal.reciclado_kg === 0 ? 'Você ainda não reciclou neste mês. Leve seus materiais a uma loja parceira.' : `Faltam ${fmtNum(x.meta_mensal.meta_kg - x.meta_mensal.reciclado_kg)} kg para a meta.`} A meta é definida pela administração.</small>
+        </div>
+      </section>
       <div className="stats-grid">
-        <Stat label="Saldo disponível" value={money(x.carteira.saldo)} icon={<Icon name="coins" />} caption={x.carteira.saldo_pendente > 0 ? `+ ${money(x.carteira.saldo_pendente)} em carência` : 'Crisomoedas'} />
         <Stat label="Materiais reciclados" value={`${fmtNum(x.resumo.total_reciclado_kg)} kg`} icon={<Icon name="recycle" />} caption="peso estimado pela regra da plataforma" />
         <Stat label="Reciclagens confirmadas" value={x.resumo.reciclagens} icon={<Icon name="qr-scan" />} caption={`${x.resumo.operacoes_totais} movimentações no total`} />
         <Stat label="Vouchers ativos" value={x.recompensas.vouchers_ativos} icon={<Icon name="star" />} caption="prontos para usar" />
       </div>
       <div className="two-up">
-        <Panel title="Meta de reciclagem do mês">
-          <div className="progress-meta"><strong>{fmtNum(x.meta_mensal.reciclado_kg)} kg de {fmtNum(x.meta_mensal.meta_kg)} kg</strong><span className="muted">{x.meta_mensal.percentual}%</span></div>
-          <Progress value={x.meta_mensal.percentual} label="Progresso da meta mensal de reciclagem" tone={x.meta_mensal.atingida ? 'gold' : 'green'} />
-          <p className="inline-note">{x.meta_mensal.atingida ? 'Meta do mês atingida. Parabéns!' : x.meta_mensal.reciclado_kg === 0 ? 'Você ainda não reciclou neste mês. Leve seus materiais a uma loja parceira.' : `Faltam ${fmtNum(x.meta_mensal.meta_kg - x.meta_mensal.reciclado_kg)} kg para a meta.`} A meta é definida pela administração.</p>
-        </Panel>
         <Panel title="Recompensas" action={<button className="button subtle small" onClick={() => onNavigate('recompensas')}>Ver loja</button>}>
           {x.recompensas.disponiveis === 0 ? <EmptyState icon={<Icon name="star" size={1.6} />} title="Nenhuma recompensa cadastrada ainda">Assim que a administração publicar recompensas, elas aparecem aqui.</EmptyState> : <>
             <p style={{ margin: '0 0 10px' }}><strong>{x.recompensas.alcancaveis}</strong> de {x.recompensas.disponiveis} recompensas cabem no seu saldo agora.</p>

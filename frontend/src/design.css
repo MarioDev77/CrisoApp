@@ -1,0 +1,55 @@
+/* ===== Sistema de design: tokens, tipografia, botões sólidos e tela inicial do cliente ===== */
+:root{
+  --font:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --text:#17302a;--text-2:#44574d;--text-3:#5a6c63;--line:#dfe8e2;
+  --r-sm:8px;--r-md:12px;--r-lg:16px;
+  --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:24px;--sp-6:32px;
+  --shadow-1:0 1px 2px rgba(22,57,41,.07);--shadow-2:0 12px 32px rgba(22,57,41,.10);
+}
+/* Uma família só (a que realmente é carregada). Códigos continuam monoespaçados. */
+body,button,input,select,textarea{font-family:var(--font)}
+body *:not(code):not(.code-input):not(.voucher-code){font-family:var(--font)}
+body{color:var(--text)}
+h1,h2,h3{font-weight:700}
+
+/* Escala de raios: 8 / 12 / 16 */
+.button,.field-label input,.field-label select,.field-label textarea,.inline-form input,.input-with-action,.legacy-field,.legacy-submit,.alert,.mobile-logout,.nav-item,.total-line,.search-results,.selected-line,.confirm-card,.material-input,.tier-list>div,.shortcut-grid button,.cookie-choice,.key-box,.voucher-code,.short-code code{border-radius:var(--r-md)}
+.panel,.stat-card,.product-card,.voucher-card,.cookie-banner,.modal-card,.legal-document,.profile-banner{border-radius:var(--r-lg)}
+.panel,.stat-card{border-color:var(--line);box-shadow:var(--shadow-1)}
+.modal-card{box-shadow:var(--shadow-2)}
+.stat-icon,.badge,.chip{border-radius:var(--r-sm)}
+
+/* Contraste: cinzas claros demais viram um tom que passa de 4,5:1 sobre branco */
+.muted,.fine-print,.stat-label,.stat-card small,.table-sub,.role-kicker,.user-chip span,.app-footer,.page-heading p,.reward-meta,.inline-note,.activity-list small,.activity-list p,.material-input small,.search-results small,.shortcut-grid small,.product-card p,.field-label,.divider,.auth-legal,.confirm-card .muted,.legal-date,.qr-center small,.preference-row p,.cookie-banner p,.cookie-nota,.cookie-detalhes{color:var(--text-3)}
+.field-label{color:var(--text-2)}
+th{color:var(--text-3)}
+.chart-tick,.chart-unit{fill:var(--text-3)}
+
+/* Botões sólidos, com estados claros (vidro fica só nas barras e superfícies flutuantes) */
+.button{box-shadow:none;transition:transform .12s,background .15s,border-color .15s}
+.button.primary{background:var(--green);border-color:var(--green);color:#fff;box-shadow:var(--shadow-1)}
+.button.primary:hover:not(:disabled){background:var(--green-dark);border-color:var(--green-dark)}
+.button.subtle,.mobile-logout,.cookie-choice,.tabs button{background:#fff;border-color:var(--line);color:var(--green-dark)}
+.button.subtle:hover:not(:disabled),.mobile-logout:hover,.cookie-choice:hover,.tabs button:hover{background:var(--green-pale);border-color:#b9d3c3}
+.button.warning{background:#fff7df;border-color:#f1d994;color:#6f5208}
+.button.danger{background:#fff0ee;border-color:#f0d0cc;color:#a5382e}
+.tabs button[aria-selected="true"]{background:var(--green);border-color:var(--green);color:#fff}
+.button:focus-visible,.nav-item:focus-visible,.tabs button:focus-visible,.shortcut-grid button:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.sidebar .nav-item:focus-visible{outline-color:#d5b64f}
+
+/* Início do cliente: um número protagonista + meta, em vez de quatro cartões iguais */
+.hero-balance{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:var(--sp-5);padding:var(--sp-6);margin-bottom:var(--sp-4);border-radius:var(--r-lg);background:linear-gradient(135deg,#123b2a,#176044);color:#fff;box-shadow:var(--shadow-2)}
+.hero-eyebrow{display:block;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:#b4d4c0}
+.hero-value{display:block;font-size:clamp(2.2rem,5vw,3.4rem);line-height:1.05;letter-spacing:-.03em;font-weight:700;margin:var(--sp-2) 0 var(--sp-1);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.hero-sub{color:#d3e6da;font-size:.9rem}
+.hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:var(--sp-5)}
+.hero-balance .button.primary{background:var(--gold);border-color:var(--gold);color:#1d1708}
+.hero-balance .button.primary:hover:not(:disabled){background:#e0be5a;border-color:#e0be5a}
+.hero-balance .button.subtle{background:transparent;border-color:rgba(255,255,255,.4);color:#fff}
+.hero-balance .button.subtle:hover:not(:disabled){background:rgba(255,255,255,.12);border-color:#fff}
+.hero-goal{align-self:end;display:grid;gap:var(--sp-3);padding-left:var(--sp-5);border-left:1px solid rgba(255,255,255,.2)}
+.hero-goal strong{font-size:1.1rem;font-weight:700}
+.hero-goal .progress{background:rgba(255,255,255,.2)}
+.hero-goal .progress-fill{background:var(--gold)}
+.hero-goal small{color:#d3e6da;line-height:1.5;font-size:.8rem}
+@media(max-width:820px){.hero-balance{grid-template-columns:minmax(0,1fr);padding:var(--sp-5)}.hero-goal{border-left:0;border-top:1px solid rgba(255,255,255,.2);padding:var(--sp-4) 0 0}}

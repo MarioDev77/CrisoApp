@@ -53,45 +53,6 @@ body{
   .sidebar nav .nav-item.active{box-shadow:var(--glass-shine),inset 0 3px var(--gold)}
 }
 
-/* ---------- Botões ---------- */
-.button,.mobile-logout,.tabs button,.cookie-choice{
-  -webkit-backdrop-filter:blur(10px) saturate(160%);backdrop-filter:blur(10px) saturate(160%);
-  transition:transform .12s,background .15s,border-color .15s,box-shadow .15s;
-}
-.button.primary{
-  background:linear-gradient(180deg,rgba(44,142,101,.92),rgba(23,96,68,.92));
-  border-color:rgba(255,255,255,.35);
-  box-shadow:var(--glass-shine),0 8px 20px rgba(23,96,68,.28);
-}
-.button.primary:hover:not(:disabled){
-  background:linear-gradient(180deg,rgba(52,156,112,.95),rgba(26,108,76,.95));
-  box-shadow:var(--glass-shine),0 10px 24px rgba(23,96,68,.34);
-}
-.button.subtle,.mobile-logout,.cookie-choice,.tabs button{
-  background:rgba(255,255,255,.55);
-  border-color:rgba(255,255,255,.75);
-  box-shadow:var(--glass-shine),0 0 0 1px rgba(23,96,68,.12),0 4px 14px rgba(22,57,41,.06);
-}
-.button.subtle:hover:not(:disabled),.mobile-logout:hover,.cookie-choice:hover,.tabs button:hover{
-  background:rgba(255,255,255,.82);border-color:#fff;
-}
-.button.warning{
-  background:rgba(255,243,208,.66);border-color:rgba(241,217,148,.9);
-  box-shadow:var(--glass-shine),0 4px 14px rgba(128,95,9,.1);
-}
-.button.danger{
-  background:rgba(255,232,229,.66);border-color:rgba(240,190,184,.9);
-  box-shadow:var(--glass-shine),0 4px 14px rgba(165,56,46,.1);
-}
-.tabs button[aria-selected="true"]{
-  background:linear-gradient(180deg,rgba(44,142,101,.92),rgba(23,96,68,.92));
-  border-color:rgba(255,255,255,.35);color:#fff;
-}
-.close-button{
-  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
-  background:rgba(239,244,240,.7);box-shadow:var(--glass-shine);
-}
-
 /* Botão dourado das telas de login/cadastro (fundo escuro) */
 .legacy-submit,.legacy-recovery .button.primary{
   background:linear-gradient(180deg,rgba(226,190,74,.95),rgba(201,162,39,.95));
@@ -120,12 +81,10 @@ body{
   .topbar{background:#fff}
   .sidebar{background:#123b2a}
   .cookie-banner{background:#fff}
-  .button.subtle,.mobile-logout,.cookie-choice,.tabs button{background:#fff}
 }
 /* Quem pediu menos transparência no sistema recebe superfícies opacas. */
 @media(prefers-reduced-transparency:reduce){
   .topbar,.cookie-banner{background:#fff;-webkit-backdrop-filter:none;backdrop-filter:none}
   .sidebar{background:#123b2a;-webkit-backdrop-filter:none;backdrop-filter:none}
-  .button,.mobile-logout,.tabs button,.cookie-choice,.nav-item:hover,.nav-item.active,.legacy-field,.close-button{-webkit-backdrop-filter:none;backdrop-filter:none}
-  .button.subtle,.mobile-logout,.cookie-choice,.tabs button{background:#fff}
+  .nav-item:hover,.nav-item.active,.legacy-field{-webkit-backdrop-filter:none;backdrop-filter:none}
 }
