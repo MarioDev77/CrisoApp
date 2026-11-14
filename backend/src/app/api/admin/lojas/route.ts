@@ -17,8 +17,8 @@ export const GET = api({ auth: ["admin"] }, async () => {
 });
 
 const body = z.object({
-  nome: z.string({ error: "Preencha todos os campos obrigatorios" }).trim().min(1, "Preencha todos os campos obrigatorios").max(255),
-  responsavel: z.string({ error: "Preencha todos os campos obrigatorios" }).trim().min(1, "Preencha todos os campos obrigatorios").max(255),
+  nome: z.string({ error: "Preencha todos os campos obrigatórios." }).trim().min(1, "Preencha todos os campos obrigatórios.").max(255),
+  responsavel: z.string({ error: "Preencha todos os campos obrigatórios." }).trim().min(1, "Preencha todos os campos obrigatórios.").max(255),
   email,
   senha: senhaNova,
   telefone: telefoneSchema,
@@ -30,7 +30,7 @@ export const POST = api({ auth: ["admin"], body }, async ({ usuario, body, ip })
     buscarLojaPorEmail(prisma(), body.email),
     buscarUsuarioPorEmail(prisma(), body.email),
   ]);
-  if (a || b) throw new HttpError(409, "E-mail ja cadastrado");
+  if (a || b) throw new HttpError(409, "Já existe um cadastro com este e-mail.");
   const loja = await prisma().loja.create({
     data: { nome: body.nome, ...camposResponsavelLoja(body.responsavel), ...camposEmailLoja(body.email), ...camposTelefoneLoja(body.telefone), ...camposEnderecoLoja(body.endereco), senha: await hashSenha(body.senha), status: "ativo" },
   });

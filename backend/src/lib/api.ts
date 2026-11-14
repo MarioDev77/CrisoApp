@@ -24,7 +24,7 @@ const json = (status: number, corpo: unknown, headers?: HeadersInit) =>
 
 async function lerCorpo(req: NextRequest): Promise<unknown> {
   const len = Number(req.headers.get("content-length") ?? 0);
-  if (len > MAX_BODY) throw new HttpError(413, "Corpo da requisição muito grande");
+  if (len > MAX_BODY) throw new HttpError(413, "Os dados enviados são grandes demais.");
   if (!req.body) return {};
   const reader = req.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -36,7 +36,7 @@ async function lerCorpo(req: NextRequest): Promise<unknown> {
       total += value.byteLength;
       if (total > MAX_BODY) {
         await reader.cancel();
-        throw new HttpError(413, "Corpo da requisição muito grande");
+        throw new HttpError(413, "Os dados enviados são grandes demais.");
       }
       chunks.push(value);
     }
@@ -124,11 +124,11 @@ export function api<B = unknown, Q = unknown, P = Record<string, string>>(
       if (e instanceof ZodError) {
         status = 400;
         const primeira = e.issues[0];
-        return json(400, { sucesso: false, mensagem: primeira?.message ?? "Dados inválidos", campo: primeira?.path.join(".") });
+        return json(400, { sucesso: false, mensagem: primeira?.message ?? "Confira os dados informados e tente de novo.", campo: primeira?.path.join(".") });
       }
       status = 500;
       log.error("erro_interno", { rid, rota: req.nextUrl.pathname, erro: e instanceof Error ? e.message : String(e) });
-      return json(500, { sucesso: false, mensagem: "Erro interno", ref: rid });
+      return json(500, { sucesso: false, mensagem: "Algo deu errado do nosso lado. Tente de novo em instantes.", ref: rid });
     } finally {
       log.info("req", { rid, m: req.method, p: req.nextUrl.pathname, s: status, ms: Date.now() - t0 });
     }

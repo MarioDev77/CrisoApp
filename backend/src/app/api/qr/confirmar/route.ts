@@ -14,7 +14,7 @@ import { codigoCurtoDe } from "@/lib/qr-codigo";
 const KG_MAXIMO = 200;
 const MAX_CREDITOS_DIA = 5;
 const MAX_DEBITOS_DIA = 10;
-const body = z.object({ token: z.string({ error: "Token ausente" }).trim().min(1, "Token ausente").max(255), id_transacao: z.coerce.number().optional() });
+const body = z.object({ token: z.string({ error: "Informe o código do QR." }).trim().min(1, "Informe o código do QR.").max(255), id_transacao: z.coerce.number().optional() });
 
 type QrRow = { token: string; id_transacao: number; id_loja: number; nome_loja: string | null; tipo: "credito" | "debito"; valor: string; materiais: unknown; materiais_desc: string; produto: string | null; dados_enc: string | null; status: string; id_cliente: number | null; ip_gerado: string | null; ip_enc: string | null; expira_em: Date };
 type Operacao = { id_transacao: number; referencia_qr: number; tipo: "credito" | "debito"; valor: number; kg: number; materiais: Record<Material, number> | null; descricao: string; loja: string | null; status: string; disponivel_em: Date | null };

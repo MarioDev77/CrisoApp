@@ -9,7 +9,7 @@ import { codigoCurtoDe } from "@/lib/qr-codigo";
 import { MSG_QR_OUTRO_CLIENTE, vinculoQr } from "@/lib/qr-vinculo";
 import { auditar } from "@/lib/servicos";
 
-const body = z.object({ token: z.string({ error: "Token ausente" }).trim().min(1, "Token ausente").max(255) });
+const body = z.object({ token: z.string({ error: "Informe o código do QR." }).trim().min(1, "Informe o código do QR.").max(255) });
 
 export const POST = api(
   { auth: ["cliente"], body, limites: [{ nome: "qr-validar", por: "usuario", max: 10, janelaSeg: 900, msg: "Muitas tentativas. Tente novamente em 15 minutos." }] },

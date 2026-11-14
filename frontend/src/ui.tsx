@@ -25,8 +25,8 @@ export function Skeleton({ lines = 3, height = 18 }: { lines?: number; height?: 
 export function StatsSkeleton({ count = 4 }: { count?: number }) {
   return <div className="stats-grid" aria-busy="true" aria-label="Carregando">{Array.from({ length: count }, (_, i) => <div key={i} className="stat-card"><span className="skeleton" style={{ width: 42, height: 42, borderRadius: 12 }} /><div style={{ flex: 1 }}><span className="skeleton" style={{ height: 12, width: '60%' }} /><span className="skeleton" style={{ height: 24, width: '80%', marginTop: 8 }} /></div></div>)}</div>;
 }
-export function EmptyState({ icon = <Icon name="leaf" size={1.6} />, title, children, action }: { icon?: ReactNode; title: string; children?: ReactNode; action?: ReactNode }) {
-  return <div className="empty-state"><span aria-hidden="true">{icon}</span><strong>{title}</strong>{children && <p>{children}</p>}{action}</div>;
+export function EmptyState({ icon = <Icon name="leaf" size={1.6} />, art, title, children, action }: { icon?: ReactNode; art?: 'eco' | 'gift' | 'history'; title: string; children?: ReactNode; action?: ReactNode }) {
+  return <div className="empty-state">{art ? <div className="empty-art"><Illustration name={art} /></div> : <span aria-hidden="true">{icon}</span>}<strong>{title}</strong>{children && <p>{children}</p>}{action}</div>;
 }
 export function Progress({ value, label, tone = 'green' }: { value: number; label: string; tone?: 'green' | 'gold' }) {
   const v = Math.max(0, Math.min(100, Math.round(value)));
@@ -44,7 +44,7 @@ const W = 640, H = 260, PL = 46, PR = 12, PT = 14, PB = 38;
 /** Gráfico de barras ou linha em SVG. Tem título, unidade, legenda, estado vazio e tabela alternativa para leitores de tela. */
 export function Chart({ title, unit, data, kind = 'bar', color = '#176044', digits = 1 }: { title: string; unit: string; data: Ponto[]; kind?: 'bar' | 'line'; color?: string; digits?: number }) {
   const total = data.reduce((s, d) => s + d.value, 0);
-  if (!data.length || total === 0) return <EmptyState icon={<Icon name="leaf" size={1.6} />} title="Sem registros neste recorte">Não há dados para exibir em “{title}”. Ajuste o período ou os filtros.</EmptyState>;
+  if (!data.length || total === 0) return <EmptyState art="eco" title="Sem registros neste recorte">Não há dados para exibir em “{title}”. Ajuste o período ou os filtros.</EmptyState>;
   const max = niceMax(Math.max(...data.map(d => d.value)));
   const iw = W - PL - PR, ih = H - PT - PB;
   const x = (i: number) => PL + (kind === 'bar' ? (iw / data.length) * (i + 0.5) : data.length === 1 ? iw / 2 : (iw / (data.length - 1)) * i);
@@ -86,4 +86,17 @@ export function CountUp({ value, format, duration = 900 }: { value: unknown; for
     return () => cancelAnimationFrame(id);
   }, [alvo, duration]);
   return <><span aria-hidden="true">{format(atual)}</span><span className="sr-only">{format(alvo)}</span></>;
+}
+
+/** Ilustrações vetoriais próprias (verde da marca + dourado da Crisomoeda). Decorativas: aria-hidden. */
+export function Illustration({ name }: { name: 'eco' | 'gift' | 'history' }) {
+  const chao = <ellipse cx="80" cy="108" rx="58" ry="8" fill="#e0f5ea" />;
+  const folha = (x: number, y: number, s = 1, c = '#12985f') => <path transform={`translate(${x} ${y}) scale(${s})`} d="M0 0c-9 5-12 17-4 26 10-2 17-13 4-26z" fill={c} />;
+  const moeda = (x: number, y: number) => <g className="illus-float"><circle cx={x} cy={y} r="14" fill="#e3c25f" /><circle cx={x} cy={y} r="14" fill="none" stroke="#d1ad4b" strokeWidth="2" /><circle cx={x} cy={y} r="9.5" fill="none" stroke="#fff" strokeOpacity=".55" strokeDasharray="2 3" />{folha(x, y - 7, .5, '#fff')}</g>;
+  return <svg className="illus" viewBox="0 0 160 120" role="presentation" aria-hidden="true" focusable="false">
+    {chao}
+    {name === 'eco' && <><rect x="46" y="44" width="52" height="58" rx="8" fill="#12985f" /><rect x="40" y="34" width="64" height="12" rx="6" fill="#0a6a43" /><rect x="64" y="28" width="16" height="8" rx="4" fill="#0a6a43" />{folha(72, 56, 1.1, '#fff')}<path d="M54 52v44M90 52v44" stroke="#fff" strokeOpacity=".18" strokeWidth="2" />{moeda(118, 40)}{folha(116, 84, .8, '#7fd1a6')}{folha(24, 80, .7, '#7fd1a6')}</>}
+    {name === 'gift' && <><rect x="44" y="52" width="72" height="50" rx="8" fill="#12985f" /><rect x="38" y="42" width="84" height="16" rx="7" fill="#0a6a43" /><rect x="74" y="42" width="12" height="60" fill="#e3c25f" /><path d="M80 42c-14-16-28-6-20 0zM80 42c14-16 28-6 20 0z" fill="#e3c25f" /><path className="illus-float" d="M130 22l3.5 7.5 8 1-6 5.5 1.7 8-7.2-4-7.2 4 1.7-8-6-5.5 8-1z" fill="#e3c25f" />{folha(26, 56, .8, '#7fd1a6')}</>}
+    {name === 'history' && <><path d="M50 18h60v82l-7.5-5-7.5 5-7.5-5-7.5 5-7.5-5-7.5 5-7.5-5-7.5 5z" fill="#fff" stroke="#bfe3cf" strokeWidth="2" /><path d="M60 36h40M60 50h28M60 64h34" stroke="#12985f" strokeWidth="4" strokeLinecap="round" /><path d="M60 78h18" stroke="#bfe3cf" strokeWidth="4" strokeLinecap="round" />{moeda(112, 82)}{folha(26, 64, .8, '#7fd1a6')}</>}
+  </svg>;
 }

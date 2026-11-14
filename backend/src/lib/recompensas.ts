@@ -10,7 +10,7 @@ export type RecompensaRegra = { ativo: boolean; disponivelAte: Date | null; esto
 export function motivoIndisponivel(r: RecompensaRegra, agora = new Date()): string | null {
   if (!r.ativo) return "Recompensa indisponível.";
   if (r.disponivelAte && r.disponivelAte < agora) return "Recompensa encerrada.";
-  if (r.estoque !== null && r.estoque <= 0) return "Esgotada.";
+  if (r.estoque !== null && r.estoque <= 0) return "Recompensa esgotada.";
   return null;
 }
 

@@ -28,7 +28,7 @@ export const POST = api(
       buscarUsuarioPorEmail(prisma(), body.email),
       buscarLojaPorEmail(prisma(), body.email),
     ]);
-    if (u || l) throw new HttpError(400, "Nao foi possivel completar o cadastro");
+    if (u || l) throw new HttpError(400, "Não foi possível completar o cadastro.");
     try {
       const novo = await prisma().usuario.create({
         data: { nome: body.nome, ...camposEmailUsuario(body.email), senha, ...camposTelefoneUsuario(body.telefone), tipo: "cliente", status: "ativo" },
@@ -39,7 +39,7 @@ export const POST = api(
         201,
       );
     } catch (e) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") throw new HttpError(400, "Nao foi possivel completar o cadastro");
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") throw new HttpError(400, "Não foi possível completar o cadastro.");
       throw e;
     }
   },

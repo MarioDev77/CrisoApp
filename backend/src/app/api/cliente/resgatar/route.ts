@@ -11,7 +11,7 @@ import { MSG_PERFIL_INCOMPLETO, emailVerificadoOuErro, perfilCompleto } from "@/
 import { env } from "@/lib/env";
 
 const body = z.object({
-  valor: z.coerce.number({ error: "Valor inválido" }).positive("Valor inválido").max(100, "O limite diário por solicitação é R$ 100,00."),
+  valor: z.coerce.number({ error: "Informe um valor válido." }).positive("Informe um valor válido.").max(100, "O limite diário por solicitação é R$ 100,00."),
   forma: z.enum(["pix"]).default("pix"),
 });
 
@@ -20,7 +20,7 @@ export const POST = api(
   async ({ usuario, body, ip }) => {
     if (!sessaoAutenticadaRecentemente(usuario)) throw new HttpError(401, "Entre novamente para confirmar sua identidade antes do resgate.");
     const valor = arred(body.valor);
-    if (valor <= 0) throw new HttpError(400, "Valor inválido");
+    if (valor <= 0) throw new HttpError(400, "Informe um valor válido.");
     const limites = await limitesAntifraude();
     const resultado = await prisma().$transaction(async (tx) => {
       const contas = await tx.$queryRaw<{ id: number; saldo: string; nome: string; email: string }[]>`
@@ -48,7 +48,7 @@ export const POST = api(
       const debitado = await tx.$queryRaw<{ saldo: string }[]>`
         UPDATE usuarios SET saldo = saldo - ${valor}::numeric, total_utilizado = total_utilizado + ${valor}::numeric
         WHERE id = ${usuario.id} AND saldo >= ${valor}::numeric RETURNING saldo::text AS saldo`;
-      if (!debitado.length) throw new HttpError(400, "Saldo insuficiente.");
+      if (!debitado.length) throw new HttpError(400, "Seu saldo ainda não é suficiente para esta recompensa.");
       const transacao = await tx.transacao.create({
         data: { idCliente: usuario.id, nomeCliente: conta.nome, idLoja: null, nomeLoja: "CrisoVerde", tipo: "debito", categoria: "resgate", valor, forma: body.forma, kg: 0, materiaisDesc: "Resgate pendente de aprovação" },
       });

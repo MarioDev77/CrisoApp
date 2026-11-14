@@ -11,7 +11,7 @@ import { arred, auditar, limitesAntifraude, num } from "@/lib/servicos";
 import { Prisma } from "@/generated/prisma/client";
 
 // A chave identifica a TENTATIVA (gerada pelo navegador ao abrir a confirmação): reenviar a mesma chave nunca cobra duas vezes.
-const body = z.object({ chave: z.string({ error: "Requisição inválida" }).trim().regex(/^[A-Za-z0-9_-]{16,64}$/, "Requisição inválida") });
+const body = z.object({ chave: z.string({ error: "Não entendemos o pedido. Atualize a página e tente de novo." }).trim().regex(/^[A-Za-z0-9_-]{16,64}$/, "Não entendemos o pedido. Atualize a página e tente de novo.") });
 
 type Row = { id: number; nome: string; custo: string; estoque: number | null; limite_por_cliente: number | null; ativo: boolean; disponivel_ate: Date | null; validade_dias: number; id_loja: number | null };
 
@@ -29,7 +29,7 @@ export const POST = api<z.infer<typeof body>, unknown, { id: string }>(
       // 2) Idempotência: a mesma tentativa devolve o voucher já criado, sem novo débito.
       const repetido = await tx.resgateRecompensa.findUnique({ where: { idCliente_chave: { idCliente: usuario.id, chave: body.chave } } });
       if (repetido) {
-        if (repetido.idRecompensa !== idRecompensa) throw new HttpError(409, "Requisição inválida.");
+        if (repetido.idRecompensa !== idRecompensa) throw new HttpError(409, "Não entendemos o pedido. Atualize a página e tente de novo.");
         return { voucher: repetido, saldo: num(cli.saldo), repetido: true };
       }
       if (!perfilCompleto(cli)) throw new HttpError(403, MSG_PERFIL_INCOMPLETO, { perfil_incompleto: true });
@@ -59,10 +59,10 @@ export const POST = api<z.infer<typeof body>, unknown, { id: string }>(
       const debitado = await tx.$queryRaw<{ saldo: string }[]>`
         UPDATE usuarios SET saldo = saldo - ${custo}::numeric, total_utilizado = total_utilizado + ${custo}::numeric
         WHERE id = ${usuario.id} AND saldo >= ${custo}::numeric RETURNING saldo::text AS saldo`;
-      if (!debitado.length) throw new HttpError(400, "Saldo insuficiente.");
+      if (!debitado.length) throw new HttpError(400, "Seu saldo ainda não é suficiente para esta recompensa.");
       if (rec.estoque !== null) {
         const baixa = await tx.$executeRaw`UPDATE recompensas SET estoque = estoque - 1 WHERE id = ${idRecompensa} AND estoque > 0`;
-        if (!baixa) throw new HttpError(409, "Esgotada.");
+        if (!baixa) throw new HttpError(409, "Recompensa esgotada.");
       }
 
       // 6) Lançamento no livro-razão existente + voucher.

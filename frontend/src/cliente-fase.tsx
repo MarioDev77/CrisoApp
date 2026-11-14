@@ -46,7 +46,7 @@ export function StudentDashboard({ nome, onNavigate }: { nome: string; onNavigat
       </div>
       <div className="two-up">
         <Panel title="Recompensas" action={<button className="button subtle small" onClick={() => onNavigate('recompensas')}>Ver loja</button>}>
-          {x.recompensas.disponiveis === 0 ? <EmptyState icon={<Icon name="star" size={1.6} />} title="Nenhuma recompensa cadastrada ainda">Assim que a administração publicar recompensas, elas aparecem aqui.</EmptyState> : <>
+          {x.recompensas.disponiveis === 0 ? <EmptyState art="gift" title="Nenhuma recompensa cadastrada ainda">Assim que a administração publicar recompensas, elas aparecem aqui.</EmptyState> : <>
             <p style={{ margin: '0 0 10px' }}><strong>{x.recompensas.alcancaveis}</strong> de {x.recompensas.disponiveis} recompensas cabem no seu saldo agora.</p>
             {x.recompensas.destaques.length ? <ul className="bar-list">{x.recompensas.destaques.map((r: any) => <li key={r.id}><div className="bar-head"><span>{r.nome}</span><strong>{money(r.custo)}</strong></div></li>)}</ul> : <p className="inline-note">Recicle mais para desbloquear sua primeira recompensa.</p>}
           </>}
@@ -54,7 +54,7 @@ export function StudentDashboard({ nome, onNavigate }: { nome: string; onNavigat
       </div>
       <Panel title="Atalhos"><div className="shortcut-grid"><button onClick={() => onNavigate('qrcode')}><span><Icon name="qr-scan" size={1.4} /></span><strong>Ler QR Code</strong><small>Confirmar crédito ou desconto</small></button><button onClick={() => onNavigate('recompensas')}><span><Icon name="star" size={1.4} /></span><strong>Recompensas</strong><small>Trocar Crisomoedas por benefícios</small></button><button onClick={() => onNavigate('reciclagem')}><span><Icon name="recycle" size={1.4} /></span><strong>Minha reciclagem</strong><small>Materiais e status de cada troca</small></button></div></Panel>
       <Panel title="Últimas movimentações" action={<button className="button subtle small" onClick={() => onNavigate('historico')}>Ver tudo</button>}>
-        {x.ultimas_movimentacoes.length === 0 ? <EmptyState icon={<Icon name="history" size={1.6} />} title="Nenhuma movimentação ainda" action={<button className="button primary" onClick={() => onNavigate('como-funciona')}>Como funciona</button>}>Quando você confirmar seu primeiro QR Code de reciclagem, ele aparece aqui.</EmptyState> : <MovimentosTabela itens={x.ultimas_movimentacoes} vazio="" />}
+        {x.ultimas_movimentacoes.length === 0 ? <EmptyState art="history" title="Nenhuma movimentação ainda" action={<button className="button primary" onClick={() => onNavigate('como-funciona')}>Como funciona</button>}>Quando você confirmar seu primeiro QR Code de reciclagem, ele aparece aqui.</EmptyState> : <MovimentosTabela itens={x.ultimas_movimentacoes} vazio="" />}
       </Panel>
     </>}
   </div>;
@@ -142,10 +142,10 @@ export function RewardsPage({ onNavigate }: { onNavigate: (id: string) => void }
       <div className="toolbar">
         <label className="field-label compact-label">Buscar<input type="search" value={busca} onChange={e => setBusca(e.target.value)} placeholder="Nome da recompensa" maxLength={60} /></label>
         <label className="field-label compact-label">Categoria<select value={categoria} onChange={e => setCategoria(e.target.value)}><option value="">Todas</option>{(cat.data?.categorias || []).map((c: string) => <option key={c} value={c}>{c}</option>)}</select></label>
-        <div className="alert info" style={{ margin: 0 }}>Saldo disponível: <strong>{money(saldo)}</strong></div>
+        <div className="balance-chip"><span>Saldo disponível</span><strong>{money(saldo)}</strong></div>
       </div>
       {cat.loading && !cat.data ? <Panel><Skeleton lines={5} /></Panel> : (cat.data?.recompensas || []).length === 0 ?
-        <Panel><EmptyState icon={<Icon name="star" size={1.6} />} title={buscaAplicada || categoria ? 'Nada encontrado' : 'Ainda não há recompensas'}>{buscaAplicada || categoria ? 'Tente outra busca ou limpe os filtros.' : 'Quando a administração cadastrar recompensas, elas aparecem aqui.'}</EmptyState></Panel> :
+        <Panel><EmptyState art="gift" title={buscaAplicada || categoria ? 'Nada encontrado' : 'Ainda não há recompensas'}>{buscaAplicada || categoria ? 'Tente outra busca ou limpe os filtros.' : 'Quando a administração cadastrar recompensas, elas aparecem aqui.'}</EmptyState></Panel> :
         <div className="product-grid">{cat.data.recompensas.map((r: any) => {
           const pode = r.disponivel && r.saldo_suficiente;
           return <article className="product-card reward-card" key={r.id} data-off={!pode}>
@@ -153,6 +153,7 @@ export function RewardsPage({ onNavigate }: { onNavigate: (id: string) => void }
             <h3>{r.nome}</h3>
             {r.descricao && <p>{r.descricao}</p>}
             <div className="reward-price">{money(r.custo)}</div>
+            {r.disponivel && !r.saldo_suficiente && Number(r.custo) > 0 && <div className="reward-progress"><Progress value={(saldo / Number(r.custo)) * 100} label={`Seu saldo cobre parte de ${r.nome}`} /><small>Você tem {money(saldo)} de {money(r.custo)}</small></div>}
             <div className="reward-meta">{r.estabelecimento && <span><Icon name="store" size={1.1} inline /> {r.estabelecimento}</span>}<span>Validade: {r.validade_dias} dias após o resgate</span>{r.estoque !== null && r.estoque > 0 && r.estoque <= 10 && <span>Restam {r.estoque}</span>}{r.disponivel_ate && <span>Até {new Date(r.disponivel_ate).toLocaleDateString('pt-BR')}</span>}</div>
             <button className="button primary full" disabled={!pode} onClick={() => abrir(r)} aria-label={`Resgatar ${r.nome}`}>{!r.disponivel ? r.motivo_indisponivel : !r.saldo_suficiente ? `Faltam ${money(r.custo - saldo)}` : 'Resgatar'}</button>
           </article>;
@@ -161,7 +162,7 @@ export function RewardsPage({ onNavigate }: { onNavigate: (id: string) => void }
     {aba === 'meus' && <>
       <ErrorBlock error={meus.error} />
       {meus.loading && !meus.data ? <Panel><Skeleton lines={4} /></Panel> : (meus.data?.resgates || []).length === 0 ?
-        <Panel><EmptyState icon={<Icon name="star" size={1.6} />} title="Você ainda não resgatou nada" action={<button className="button primary" onClick={() => setAba('catalogo')}>Ver catálogo</button>}>Os vouchers que você gerar ficam guardados aqui, com código e validade.</EmptyState></Panel> :
+        <Panel><EmptyState art="gift" title="Você ainda não resgatou nada" action={<button className="button primary" onClick={() => setAba('catalogo')}>Ver catálogo</button>}>Os vouchers que você gerar ficam guardados aqui, com código e validade.</EmptyState></Panel> :
         <div className="voucher-list">{meus.data.resgates.map((v: any) => <article className="voucher-card" key={v.id}>
           <header><h3>{v.nome}</h3><StatusBadge value={v.status_rotulo} /></header>
           <code className="voucher-code" aria-label={`Código ${formatCode(v.codigo)}`}>{formatCode(v.codigo)}</code>
