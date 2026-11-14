@@ -78,3 +78,22 @@ body{background:
 .hero-balance .button.primary{background:linear-gradient(180deg,#e3c25f,#d1ad4b)}
 .hero-balance .button.subtle{background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.4)}
 @media(prefers-reduced-transparency:reduce){.topbar{background:#176044}.sidebar{background:#123b2a}.cookie-banner{background:#eef6f1}.button,.tabs button,.cookie-choice{-webkit-backdrop-filter:none;backdrop-filter:none}}
+
+/* ===== Verde mais vivo: mais saturação, menos cinza por baixo do vidro ===== */
+:root{--green:#0e7b4e;--green-dark:#0a5436;--green-pale:#e0f5ea;--glass-green:rgba(15,138,88,.95);--glass-green-deep:rgba(10,96,64,.97)}
+.topbar{background:var(--sheen),linear-gradient(135deg,#12985f,#0a6a43 85%);-webkit-backdrop-filter:blur(18px) saturate(220%);backdrop-filter:blur(18px) saturate(220%)}
+.sidebar{background:var(--sheen),linear-gradient(165deg,#12935d 0%,#0a6a43 38%,#074a2f 100%);-webkit-backdrop-filter:blur(18px) saturate(220%);backdrop-filter:blur(18px) saturate(220%)}
+.nav-item{color:#e6f5ec}
+.nav-item:hover,.nav-item.active{background:rgba(255,255,255,.2);color:#fff}
+.sidebar-label{color:#a9e0c3}
+.button.primary,.tabs button[aria-selected="true"]{background:var(--sheen),linear-gradient(180deg,#14a064,#0a6d44);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 8px 20px rgba(10,109,68,.38)}
+.button.primary:hover:not(:disabled){background:var(--sheen),linear-gradient(180deg,#19b073,#0c7a4d)}
+.button.subtle,.cookie-choice,.tabs button{background:rgba(214,242,226,.85);border-color:rgba(14,123,78,.4)}
+.hero-balance{background:var(--sheen),linear-gradient(135deg,#12985f 0%,#0a6a43 60%,#074f31 100%);box-shadow:0 16px 36px rgba(10,106,67,.32),inset 0 1px 0 rgba(255,255,255,.35)}
+.hero-eyebrow{color:#bdf0d4}.hero-sub,.hero-goal small{color:#f0fbf5}
+.hero-goal{border-left-color:rgba(255,255,255,.3)}
+body{background:
+  radial-gradient(820px 520px at 8% -6%,rgba(20,170,105,.38),transparent 60%),
+  radial-gradient(700px 460px at 100% 10%,rgba(209,173,75,.22),transparent 60%),
+  radial-gradient(900px 600px at 50% 110%,rgba(14,123,78,.24),transparent 60%),#eef6f1;background-attachment:fixed}
+@media(prefers-reduced-transparency:reduce){.topbar{background:#0e7b4e}.sidebar{background:#0a5436}}
