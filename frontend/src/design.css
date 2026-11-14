@@ -97,3 +97,36 @@ body{background:
   radial-gradient(700px 460px at 100% 10%,rgba(209,173,75,.22),transparent 60%),
   radial-gradient(900px 600px at 50% 110%,rgba(14,123,78,.24),transparent 60%),#eef6f1;background-attachment:fixed}
 @media(prefers-reduced-transparency:reduce){.topbar{background:#0e7b4e}.sidebar{background:#0a5436}}
+
+/* ===== Ritmo (escala de espaçamento), tabelas, cartões, movimento e login ===== */
+.content-area{padding:var(--sp-6) clamp(22px,4vw,54px)}
+.page-heading{margin-bottom:var(--sp-5)}
+.page-heading h2{font-size:1.6rem;letter-spacing:-.03em}
+.panel{padding:var(--sp-5);margin-bottom:var(--sp-4)}
+.panel-heading{margin-bottom:var(--sp-4)}
+.stats-grid,.product-grid,.voucher-list,.two-up,.shortcut-grid{gap:var(--sp-4)}
+.stat-card{padding:var(--sp-5);transition:transform .15s,box-shadow .15s}
+.stat-value{font-variant-numeric:tabular-nums;font-weight:700}
+.stat-card:hover,.product-card:hover,.voucher-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}
+.product-card,.voucher-card{transition:transform .15s,box-shadow .15s,border-color .15s}
+.product-card:hover{border-color:#9fd3b6}
+/* Tabelas: cabeçalho fixo ao rolar, números alinhados, linha em destaque ao passar o mouse */
+th{position:sticky;top:0;background:#fff;font-weight:700;letter-spacing:.05em}
+td{font-variant-numeric:tabular-nums}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:var(--green-pale)}
+tbody tr:nth-child(even):not(:hover){background:#f8fbf9}
+.empty-cell{padding:var(--sp-6)!important}
+/* Movimento curto e com função; o bloco global de reduced-motion já desliga tudo */
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.content-area>*{animation:rise .35s ease-out both}
+.content-area>*:nth-child(2){animation-delay:.05s}.content-area>*:nth-child(3){animation-delay:.1s}
+.hero-value{animation:rise .5s .1s ease-out both}
+.qr-center svg{animation:rise .4s ease-out both}
+.button:active:not(:disabled){transform:translateY(0) scale(.98)}
+/* Login e cadastro no mesmo verde vivo, mantendo logo, splash e dourado */
+.legacy-auth-screen{background:radial-gradient(900px 560px at 15% -10%,rgba(20,170,105,.4),transparent 60%),linear-gradient(180deg,#07301f,#0a4a2f 70%,#052618)}
+.legacy-field{border-radius:var(--r-md);background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.22)}
+.legacy-field:focus-within{border-color:#e3c25f;box-shadow:0 0 0 3px rgba(227,194,95,.25)}
+.legacy-label,.legacy-sub{color:rgba(240,251,245,.78)}
+.legacy-leaves{opacity:.14}

@@ -11,7 +11,7 @@ export function Stat({ label, value, icon, caption }: { label: string; value: Re
 export function Table({ columns, rows, empty = 'Nada por aqui ainda.' }: { columns: string[]; rows: ReactNode[][]; empty?: string }) { return <div className="table-wrap"><table><thead><tr>{columns.map(c => <th key={c}>{c}</th>)}</tr></thead><tbody>{rows.length ? rows.map((row, i) => <tr key={i}>{row.map((c, j) => <td key={j}>{c}</td>)}</tr>) : <tr><td className="empty-cell" colSpan={columns.length}>{empty}</td></tr>}</tbody></table></div>; }
 export function useLoad<T>(path: string | null) { const [data, setData] = useState<T | null>(null); const [error, setError] = useState(''); const [loading, setLoading] = useState(true); const reload = useCallback(async () => { if (!path) return; setLoading(true); setError(''); try { setData(await api<T>(path)); } catch (e) { setError(e instanceof Error ? e.message : 'Erro ao carregar.'); } finally { setLoading(false); } }, [path]); useEffect(() => { void reload(); }, [reload]); return { data, error, loading, reload, setData }; }
 export function ErrorBlock({ error }: { error: string }) { return error ? <div className="alert error" role="alert">{error}</div> : null; }
-export function LoadingBlock() { return <div className="loading-inline"><span className="spinner" />Carregando…</div>; }
+export function LoadingBlock() { return <div className="loading-inline"><span className="spinner" />Buscando seus dados…</div>; }
 export function StatusBadge({ value }: { value: string }) { return <span className={`badge badge-${String(value).toLowerCase().replace(/[^a-z0-9]/g, '-')}`}>{value}</span>; }
 
 // ---- Componentes da nova fase (mesma identidade visual; sem dependências novas) ----
