@@ -53,3 +53,14 @@ export async function enviarAvisoLoginAdmin(para: string, nome: string): Promise
   const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${e.RESEND_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ from: e.RESEND_FROM_EMAIL, to: para, subject: "Alerta de login administrativo — CrisoVerde", html }), signal: AbortSignal.timeout(8000) });
   if (!r.ok) throw new Error(`Resend HTTP ${r.status}`);
 }
+
+/** Aviso ao administrador quando o autenticador (MFA) é iniciado ou ativado na conta dele. Se não foi ele, é sinal de invasão. */
+export async function enviarAvisoMfaAdmin(para: string, nome: string, evento: "iniciado" | "ativado"): Promise<void> {
+  const e = env();
+  if (!e.RESEND_API_KEY || !e.RESEND_FROM_EMAIL) throw new Error("Resend não configurado");
+  const primeiro = esc((nome || "").trim().split(" ")[0] || "administrador");
+  const acao = evento === "iniciado" ? "A configuração do aplicativo autenticador (segundo fator) foi iniciada" : "Um aplicativo autenticador (segundo fator) foi ativado";
+  const html = `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#f6faf6"><h2 style="color:#14532d">CrisoVerde</h2><p>Olá, ${primeiro}.</p><p>${acao} na sua conta administrativa em ${new Date().toISOString()}.</p><p>Se não foi você, altere sua senha agora e avise o suporte: alguém pode ter acesso à sua conta.</p></div>`;
+  const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${e.RESEND_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ from: e.RESEND_FROM_EMAIL, to: para, subject: "Alerta de segurança: segundo fator — CrisoVerde", html }), signal: AbortSignal.timeout(8000) });
+  if (!r.ok) throw new Error(`Resend HTTP ${r.status}`);
+}

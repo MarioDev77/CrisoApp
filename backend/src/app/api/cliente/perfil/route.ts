@@ -23,6 +23,7 @@ const visao = (u: Prisma.UsuarioGetPayload<object>) => ({
   telefone: telefoneDoUsuario(u),
   provider: u.provider,
   perfil_completo: perfilCompleto(u),
+  email_verificado: u.emailVerificado,
 });
 
 export const GET = api({ auth: ["cliente"] }, async ({ usuario }) => {

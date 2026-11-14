@@ -7,7 +7,8 @@ import { sessaoAutenticadaRecentemente } from "@/lib/auth";
 import { emailDoUsuario } from "@/lib/pii";
 import { enviarAvisoResgate } from "@/lib/email";
 import { log } from "@/lib/log";
-import { MSG_PERFIL_INCOMPLETO, perfilCompleto } from "@/lib/perfil";
+import { MSG_PERFIL_INCOMPLETO, emailVerificadoOuErro, perfilCompleto } from "@/lib/perfil";
+import { env } from "@/lib/env";
 
 const body = z.object({
   valor: z.coerce.number({ error: "Valor inválido" }).positive("Valor inválido").max(100, "O limite diário por solicitação é R$ 100,00."),
@@ -29,6 +30,8 @@ export const POST = api(
       if (!conta) throw new HttpError(404, "Conta não encontrada.");
       const cli = await tx.usuario.findUniqueOrThrow({ where: { id: usuario.id } });
       if (!perfilCompleto(cli)) throw new HttpError(403, MSG_PERFIL_INCOMPLETO, { perfil_incompleto: true });
+      const ev = emailVerificadoOuErro(cli, env().EXIGIR_EMAIL_VERIFICADO);
+      if (!ev.ok) throw new HttpError(403, ev.msg, { email_nao_verificado: true });
       const usos = await tx.$queryRaw<{ total: string }[]>`
         SELECT COALESCE(SUM(valor), 0)::text AS total FROM resgates
         WHERE id_cliente = ${usuario.id} AND (criado_em AT TIME ZONE ${tz()})::date = (now() AT TIME ZONE ${tz()})::date`;

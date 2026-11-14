@@ -29,9 +29,9 @@ export const PATCH = api({ auth: ["admin"], body }, async ({ usuario, body, para
     } else {
       throw new HttpError(409, "Transição de status não permitida.");
     }
+    await auditar("admin_atualizou_resgate", `resgate=${id} cliente=${pedido.idCliente} valor=${num(pedido.valor)} status: ${anterior} → ${body.status}${body.status === "cancelado" ? " saldo_estornado=sim" : ""}`, ip, usuario.id, tx);
     return { status: body.status, email: emailDoUsuario(pedido.cliente), nome: pedido.cliente.nome, valor: num(pedido.valor) };
   });
-  await auditar("admin_atualizou_resgate", `resgate=${id} status=${resultado.status}`, ip, usuario.id);
   try { await enviarAvisoResgate(resultado.email, resultado.nome, resultado.valor, resultado.status); }
   catch (e) { log.error("falha_envio_aviso_resgate", { erro: e instanceof Error ? e.message : "erro desconhecido" }); }
   return { sucesso: true, id_resgate: id, status: resultado.status };

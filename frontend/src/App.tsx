@@ -347,6 +347,7 @@ function CustomerContent({ section, profile, onNavigate }: { section: string; pr
   const navigate = useNavigate();
   const handleError = (e: unknown, fallback: string) => {
     if (e instanceof ApiError && e.data.perfil_incompleto) { notify('Complete seu perfil para continuar.', 'error'); navigate('/app/cliente/perfil'); return; }
+    if (e instanceof ApiError && e.data.email_nao_verificado) { notify('Confirme seu e-mail para continuar.', 'error'); navigate('/app/cliente/perfil'); return; }
     notify(e instanceof Error ? e.message : fallback, 'error');
   };
   const validate = async (e?: FormEvent, valor = token) => { e?.preventDefault(); setBusy(true); setValidated(null); setQrResult(null); try { const d = await post<any>('/qr/validar', { token: valor }); setValidated({ ...d, token: valor }); } catch (e) { notify(e instanceof Error ? e.message : 'QR inválido.', 'error'); } finally { setBusy(false); } };
@@ -366,6 +367,18 @@ function CustomerContent({ section, profile, onNavigate }: { section: string; pr
   if (section === 'perfil') return <CustomerProfile profile={profile} onSaved={() => onNavigate('dashboard')} />;
   return <Navigate to="/app/cliente/dashboard" replace />;
 }
+function EmailVerificationPanel({ onVerified }: { onVerified: () => void }) {
+  const [sent, setSent] = useState(false); const [code, setCode] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
+  const send = async () => { setBusy(true); setError(''); try { const d = await post<any>('/auth/verificar-email/solicitar', {}); setSent(true); notify(d.mensagem || 'Código enviado.'); } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível enviar o código.'); } finally { setBusy(false); } };
+  const confirm = async (e: FormEvent) => { e.preventDefault(); setBusy(true); setError(''); try { const d = await post<any>('/auth/verificar-email/confirmar', { codigo: code }); notify(d.mensagem || 'E-mail confirmado.'); onVerified(); } catch (err) { setError(err instanceof Error ? err.message : 'Não foi possível confirmar.'); } finally { setBusy(false); } };
+  return <Panel title="Confirmar e-mail"><div className="stack">
+    <p className="muted">Confirme que este e-mail é seu. Ele protege seus resgates e a recuperação da conta.</p>
+    {error && <div role="alert" className="alert error">{error}</div>}
+    {!sent ? <button type="button" className="button primary" disabled={busy} onClick={send}>Enviar código por e-mail</button> : <form className="stack" onSubmit={confirm}>
+      <Field label="Código de 6 dígitos" value={code} onChange={v => setCode(v.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" maxLength={6} required />
+      <div className="cookie-modal-actions"><button className="button primary" disabled={busy || code.length !== 6}>Confirmar</button><button type="button" className="button subtle" disabled={busy} onClick={send}>Reenviar código</button></div></form>}
+  </div></Panel>;
+}
 function CustomerProfile({ profile, onSaved }: { profile: Profile; onSaved: () => void }) {
   const data = useLoad<any>('/cliente/perfil');
   const [form, setForm] = useState<{ nome: string; email: string; telefone: string } | null>(null);
@@ -379,13 +392,14 @@ function CustomerProfile({ profile, onSaved }: { profile: Profile; onSaved: () =
     e.preventDefault(); setBusy(true); setError('');
     try {
       const d = await api<any>('/cliente/perfil', { method: 'PUT', body: JSON.stringify({ ...form, ...(mudouEmail ? { senha_atual: senhaAtual } : {}) }) });
-      notify(d.mensagem || 'Perfil salvo.'); setSenhaAtual('');
+      notify(d.mensagem || 'Perfil salvo.'); setSenhaAtual(''); void data.reload();
       if (profile.perfil_completo === false && d.perfil_completo) onSaved();
     } catch (err) { setError(err instanceof Error ? err.message : 'Não foi possível salvar.'); } finally { setBusy(false); }
   };
   return <>
     <PageTitle title="Meu perfil" description="Seus dados de contato e de acesso." />
     {profile.perfil_completo === false ? <div className="alert info">Preencha todos os campos abaixo e salve. Assim que o perfil estiver completo, seus resgates são liberados automaticamente.</div> : <div className="alert success">Perfil completo. Seus resgates estão liberados.</div>}
+    {data.data?.email_verificado === false && <EmailVerificationPanel onVerified={() => void data.reload()} />}
     <Panel title="Dados pessoais"><form className="stack" onSubmit={save}>
       {error && <div role="alert" className="alert error">{error}</div>}
       <Field label="Nome completo" value={form.nome} onChange={set('nome')} autoComplete="name" required maxLength={120} />
@@ -415,9 +429,9 @@ function StoreContent({ section, profile }: { section: string; profile: Profile 
   const total = useMemo(() => materials.reduce((sum, m) => sum + Math.floor(Number(quantities[m] || 0) / Math.max(1, Number(rates[m] || 1))) * 0.25, 0), [quantities, rates]);
   const generate = async (kind: 'credito' | 'debito') => {
     setBusy(true); setGenerated(null);
-    try { const payload = kind === 'credito' ? { tipo: kind, materiais: Object.fromEntries(materials.map(m => [m, Number(quantities[m] || 0)])) } : { tipo: kind, produto: product, valor: Number(debitValue) };
+    try { const clienteId = selectedCustomer?.id_cliente ?? selectedCustomer?.id; const payload = kind === 'credito' ? { tipo: kind, materiais: Object.fromEntries(materials.map(m => [m, Number(quantities[m] || 0)])), ...(clienteId ? { id_cliente: Number(clienteId) } : {}) } : { tipo: kind, produto: product, valor: Number(debitValue) };
       const d = await post<any>('/qr/gerar', payload); setGenerated({ ...d, tipo: kind, valor: kind === 'credito' ? total : Number(debitValue), descricao: kind === 'credito' ? materials.filter(m => Number(quantities[m] || 0) > 0).map(m => `${materialLabels[m]}: ${quantities[m]}`).join(', ') : product });
-      notify('QR Code gerado. Peça ao cliente para ler e confirmar.');
+      notify(kind === 'credito' ? (clienteId ? `QR Code gerado para ${selectedCustomer.nome}. Peça ao cliente para ler e confirmar.` : 'QR Code gerado sem cliente identificado: qualquer cliente logado poderá confirmá-lo. Identifique o cliente para prender o QR a ele.') : 'QR Code gerado. Peça ao cliente para ler e confirmar.');
     } catch (e) { notify(e instanceof Error ? e.message : 'Não foi possível gerar o QR.', 'error'); }
     finally { setBusy(false); }
   };

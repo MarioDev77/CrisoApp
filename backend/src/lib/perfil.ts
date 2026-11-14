@@ -14,3 +14,9 @@ export function perfilCompleto(u: UsuarioPerfil): boolean {
   const telefone = normalizarTelefone(telefoneDoUsuario(u));
   return u.nome.trim().length >= 2 && EMAIL_RE.test(emailDoUsuario(u)) && /^\d{10,13}$/.test(telefone);
 }
+
+export const MSG_EMAIL_NAO_VERIFICADO = "Confirme seu e-mail para usar esta função.";
+/** Operações que dependem de e-mail comprovado (resgate e confirmação de QR). Só barra quando EXIGIR_EMAIL_VERIFICADO=true. */
+export function emailVerificadoOuErro(u: { emailVerificado: boolean }, exigir: boolean): { ok: true } | { ok: false; msg: string } {
+  return exigir && !u.emailVerificado ? { ok: false, msg: MSG_EMAIL_NAO_VERIFICADO } : { ok: true };
+}

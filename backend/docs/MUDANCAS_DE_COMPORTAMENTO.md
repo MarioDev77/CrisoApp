@@ -21,7 +21,7 @@ Todas são intencionais (correção de falhas encontradas na auditoria). **Confi
 | 15 | Rate limits por IP (login, cadastro, reset…) além de IP+e-mail | Credential stuffing |
 | 16 | Redefinir senha revoga todas as sessões | Segurança |
 | 17 | Recuperação de senha segue **somente para clientes** (como no original) | Lojas continuam sem recuperação: pendência |
-| 18 | Confirmação de e-mail obrigatória para confirmar QR e pedir resgate | Reduz fraude; exige entrega funcional de e-mail |
+| 18 | Confirmação de e-mail para confirmar QR e pedir resgate: **opcional por chave** (`EXIGIR_EMAIL_VERIFICADO`, desligada por padrão) | Reduz fraude; exige entrega funcional de e-mail |
 | 19 | MFA obrigatório antes das rotas administrativas | Primeiro acesso precisa provisionar autenticador e guardar códigos de recuperação |
 | 20 | Resgate exige sessão autenticada nos últimos 5 minutos e tem teto de R$ 100/dia | Protege operações financeiras; pode exigir novo login |
 | 21 | Crédito limita R$ 300 por loja/dia e R$ 150 por cliente/dia; crédito fica em carência por 24 h | Tetos definidos com o usuário; prazos e cancelamentos precisam de homologação |

@@ -15,6 +15,9 @@ import {
 export type ContaMfa = { tipo: "usuario" | "loja"; id: number };
 export const contaDoPerfil = (p: { tipo: string; id: number }): ContaMfa => ({ tipo: p.tipo === "loja" ? "loja" : "usuario", id: p.id });
 
+/** Segredo pendente (ainda não confirmado) vale só por este tempo: quem copiou a chave e abandonou não deixa uma porta aberta. */
+export const VALIDADE_SEGREDO_PENDENTE_MS = 15 * 60_000;
+
 export const buscarMfa = (c: ContaMfa) => prisma().mfaConta.findUnique({ where: { contaTipo_contaId: { contaTipo: c.tipo, contaId: c.id } } });
 
 /** Substitui todos os códigos da conta por um conjunto novo e devolve o texto em claro (só para exibir agora). */

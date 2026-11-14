@@ -2,7 +2,8 @@ import { z } from "zod";
 import { api } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { HttpError, notFound } from "@/lib/errors";
-import { MSG_PERFIL_INCOMPLETO, perfilCompleto } from "@/lib/perfil";
+import { MSG_PERFIL_INCOMPLETO, emailVerificadoOuErro, perfilCompleto } from "@/lib/perfil";
+import { env } from "@/lib/env";
 import { formatarCodigo, novoCodigoCurto } from "@/lib/qr-codigo";
 import { motivoIndisponivel } from "@/lib/recompensas";
 import { idParam } from "@/lib/schemas";
@@ -32,6 +33,8 @@ export const POST = api<z.infer<typeof body>, unknown, { id: string }>(
         return { voucher: repetido, saldo: num(cli.saldo), repetido: true };
       }
       if (!perfilCompleto(cli)) throw new HttpError(403, MSG_PERFIL_INCOMPLETO, { perfil_incompleto: true });
+      const ev = emailVerificadoOuErro(cli, env().EXIGIR_EMAIL_VERIFICADO);
+      if (!ev.ok) throw new HttpError(403, ev.msg, { email_nao_verificado: true });
 
       // 3) Trava a recompensa e confere regras com os dados do BANCO (preço/estoque/validade nunca vêm do cliente).
       const rec = (await tx.$queryRaw<Row[]>`SELECT id, nome, custo::text AS custo, estoque, limite_por_cliente, ativo, disponivel_ate, validade_dias, id_loja FROM recompensas WHERE id = ${idRecompensa} FOR UPDATE`)[0];

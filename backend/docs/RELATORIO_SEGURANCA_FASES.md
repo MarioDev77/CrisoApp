@@ -10,7 +10,7 @@ O `crypto.ts` recebido em `criptografia.zip` foi incorporado sem edição. A pro
 
 | Grupo | Implementação local | Situação / risco residual |
 |---|---|---|
-| V1 — confirmação de e-mail | OTP de seis dígitos, expiração, tentativas limitadas, hash com namespace próprio e bloqueio de QR/resgate até confirmação | Depende de Resend configurado e teste de entrega no ambiente de homologação. |
+| V1 — confirmação de e-mail | OTP de seis dígitos, expiração, tentativas limitadas, hash com namespace próprio e bloqueio de QR/resgate até confirmação **(corrigido na Etapa 3: o código NÃO exigia isso; agora existe a chave `EXIGIR_EMAIL_VERIFICADO`, desligada por padrão — ver `PLANO_ATIVACAO_E_RELATORIO_V2.md`)** | Depende de Resend configurado e teste de entrega no ambiente de homologação. |
 | V2/V5 — dados pessoais | Dual-write cifrado, índices cegos, leituras compatíveis com registros antigos e script de backfill em lotes | **Migração e backfill pendentes.** Não remover campos legados até validar contagens e amostras em cópia restaurada. |
 | V3 — fraude/créditos/resgates | Limites diários: R$ 300 por loja, R$ 150 por cliente, R$ 100 por resgates; carência de 24h; bloqueio transacional e trilha de auditoria | Homologar concorrência e regras de cancelamento com o negócio. |
 | V4 — busca com dados protegidos | Consultas de e-mail/Google usam índices cegos com fallback de legado | Validar duplicidade/normalização em banco restaurado antes do backfill. |

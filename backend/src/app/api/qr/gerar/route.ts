@@ -8,6 +8,8 @@ import { configQr, taxasVigentes } from "@/lib/servicos";
 import { camposQrCode } from "@/lib/pii";
 import { formatarCodigo, novoCodigoCurto } from "@/lib/qr-codigo";
 import { Prisma } from "@/generated/prisma/client";
+import { env } from "@/lib/env";
+import { log } from "@/lib/log";
 
 const VALOR_MAXIMO_DEBITO = 100000;
 /** Gera o código curto e tenta de novo na (rara) colisão com outro código já guardado. */
@@ -25,6 +27,8 @@ const body = z.object({
   valor: z.coerce.number().optional(),
   produto: z.string().trim().max(255).optional(),
   materiais: z.lazy(() => materiaisSchema()).optional(),
+  /** Cliente identificado pela loja (só crédito). O QR passa a valer apenas para ele. */
+  id_cliente: z.coerce.number().int().positive().optional(),
 });
 
 export const POST = api(
@@ -49,12 +53,19 @@ export const POST = api(
     }
 
     // Crédito: o valor é SEMPRE recalculado no servidor; teto de unidades por material (anti-fraude).
+    if (!body.id_cliente && env().QR_CREDITO_EXIGE_CLIENTE) throw new HttpError(400, "Identifique o cliente antes de gerar o QR de crédito.");
+    if (body.id_cliente) {
+      const cliente = await prisma().usuario.findFirst({ where: { id: body.id_cliente, tipo: "cliente", status: "ativo", deletadoEm: null }, select: { id: true } });
+      if (!cliente) throw new HttpError(400, "Cliente inválido ou inativo.");
+    }
     const mat = body.materiais ?? { papelao: 0, plastico: 0, aluminio: 0, vidro: 0 };
     const valor = calcularCreditos(mat, await taxasVigentes());
     if (valor <= 0) throw new HttpError(400, "Quantidade insuficiente para gerar credito");
     const { qr, codigo } = await comCodigoCurto((codigo) => prisma().qrCode.create({
-      data: { token, codigoCurto: codigo, ...camposQrCode(token, ip, { valor, materiais: mat, materiaisDesc: descricao(mat), produto: null }), idLoja: loja.id, nomeLoja: loja.nome, tipo: "credito", valor, materiais: mat, materiaisDesc: descricao(mat), ipGerado: ip, expiraEm },
+      data: { token, codigoCurto: codigo, ...camposQrCode(token, ip, { valor, materiais: mat, materiaisDesc: descricao(mat), produto: null }), idLoja: loja.id, idCliente: body.id_cliente ?? null, nomeLoja: loja.nome, tipo: "credito", valor, materiais: mat, materiaisDesc: descricao(mat), ipGerado: ip, expiraEm },
     }));
+    // Métrica para decidir quando ligar QR_CREDITO_EXIGE_CLIENTE (sem dado pessoal): quantos créditos já saem com o cliente identificado.
+    log.info("qr_credito_gerado", { vinculado: Boolean(body.id_cliente) });
     return { sucesso: true, token, codigo: formatarCodigo(codigo), id_transacao: qr.idTransacao, expira_em: expiraEm.toISOString() };
   },
 );

@@ -22,11 +22,17 @@ export const POST = api({ auth: ["cliente", "loja", "admin"], body, limites: [{ 
     : await prisma().usuario.findUniqueOrThrow({ where: { id: usuario.id }, select: { senha: true } });
   if (conta.senha) {
     if (!body.senha) throw new HttpError(400, "Confirme sua senha.");
-    if (!(await compararSenha(body.senha, conta.senha))) throw new HttpError(401, "Senha incorreta.");
+    if (!(await compararSenha(body.senha, conta.senha))) {
+      await auditar("mfa_codigos_falha", `perfil=${usuario.tipo}${usuario.tipo === "loja" ? ` loja_id=${usuario.id}` : ""} motivo=senha`, ip, usuario.tipo === "loja" ? null : usuario.id);
+      throw new HttpError(401, "Senha incorreta.");
+    }
   } else {
     let ok = false;
     try { ok = verificarTotp(decifrarSegredoTotp(mfa.segredoEnc), body.codigo ?? ""); } catch { ok = false; }
-    if (!ok) throw new HttpError(401, "Código do autenticador incorreto.");
+    if (!ok) {
+      await auditar("mfa_codigos_falha", `perfil=${usuario.tipo}${usuario.tipo === "loja" ? ` loja_id=${usuario.id}` : ""} motivo=codigo`, ip, usuario.tipo === "loja" ? null : usuario.id);
+      throw new HttpError(401, "Código do autenticador incorreto.");
+    }
   }
   if (body.acao === "regenerar") await substituirCodigosRecuperacao(mfa.id);
   await auditar(body.acao === "regenerar" ? "mfa_codigos_regenerados" : "mfa_codigos_visualizados", `perfil=${usuario.tipo}${usuario.tipo === "loja" ? ` loja_id=${usuario.id}` : ""}`, ip, usuario.tipo === "loja" ? null : usuario.id);

@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { api } from "@/lib/api";
-import { prisma } from "@/lib/db";
-import { auditar } from "@/lib/servicos";
+import { alterarConfiguracao } from "@/lib/auditoria-admin";
 
 const body = z.object({
   expiracao_segundos: z.coerce.number().int().min(1).max(300).catch(60),
@@ -9,7 +8,6 @@ const body = z.object({
 });
 
 export const POST = api({ auth: ["admin"], body }, async ({ usuario, body, ip }) => {
-  await prisma().configuracao.upsert({ where: { chave: "qr" }, create: { chave: "qr", valor: body }, update: { valor: body } });
-  await auditar("admin_alterou_config_qr", JSON.stringify(body), ip, usuario.id);
+  await alterarConfiguracao({ chave: "qr", valor: body, acao: "admin_alterou_config_qr", usuarioId: usuario.id, ip });
   return { sucesso: true };
 });

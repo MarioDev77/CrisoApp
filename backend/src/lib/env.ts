@@ -26,6 +26,9 @@ const schema = z.object({
   RESEND_FROM_EMAIL: z.string().optional(),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_LOGIN_ATIVO: z.enum(["true", "false"]).default("false").transform((v) => v === "true"),
+  // Ativação gradual (ambas desligadas por padrão para não bloquear quem já usa o app). Ver docs/PLANO_ATIVACAO_E_RELATORIO_V2.md.
+  QR_CREDITO_EXIGE_CLIENTE: z.enum(["true", "false"]).default("false").transform((v) => v === "true"),
+  EXIGIR_EMAIL_VERIFICADO: z.enum(["true", "false"]).default("false").transform((v) => v === "true"),
   LEGACY_BEARER: z.enum(["true", "false"]).default("false").transform((v) => v === "true"),
   APP_TIMEZONE: z.string().default("America/Sao_Paulo"),
   QR_MAX_UNIDADES_POR_MATERIAL: z.coerce.number().int().min(1).max(100000).default(200),

@@ -168,3 +168,12 @@ describe('o app não conecta a terceiros por conta própria', () => {
     expect(consent.match(/accounts\.google\.com\/gsi\/client/g)?.length).toBeGreaterThanOrEqual(1);
   });
 });
+
+describe('CSP coerente com o interruptor do login Google', () => {
+  it('a CSP da Vercel só cita accounts.google.com se GOOGLE_LOGIN_ATIVO for true (privilégio mínimo)', async () => {
+    const { GOOGLE_LOGIN_ATIVO } = await import('../src/consent');
+    const v = readFileSync(resolve(__dirname, '..', 'vercel.json'), 'utf8');
+    expect(v.includes('accounts.google.com')).toBe(GOOGLE_LOGIN_ATIVO);
+    expect(v).toContain("frame-src 'none'");
+  });
+});

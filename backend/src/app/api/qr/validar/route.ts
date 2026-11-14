@@ -6,12 +6,14 @@ import { limitesAntifraude, num } from "@/lib/servicos";
 import { calcularKg, MATERIAIS, type Material } from "@/lib/materiais";
 import { decifrarDadosQr, tokenHashQr } from "@/lib/pii";
 import { codigoCurtoDe } from "@/lib/qr-codigo";
+import { MSG_QR_OUTRO_CLIENTE, vinculoQr } from "@/lib/qr-vinculo";
+import { auditar } from "@/lib/servicos";
 
 const body = z.object({ token: z.string({ error: "Token ausente" }).trim().min(1, "Token ausente").max(255) });
 
 export const POST = api(
   { auth: ["cliente"], body, limites: [{ nome: "qr-validar", por: "usuario", max: 10, janelaSeg: 900, msg: "Muitas tentativas. Tente novamente em 15 minutos." }] },
-  async ({ body }) => {
+  async ({ usuario, body, ip }) => {
     const curto = codigoCurtoDe(body.token);
     const qr = await prisma().qrCode.findFirst({ where: { OR: [{ token: body.token }, ...(tokenHashQr(body.token) ? [{ tokenHash: tokenHashQr(body.token) }] : []), ...(curto ? [{ codigoCurto: curto }] : [])] } });
     if (!qr) throw new HttpError(404, "QR Code nao encontrado", { valido: false });
@@ -19,6 +21,10 @@ export const POST = api(
     if (qr.expiraEm < new Date()) {
       await prisma().qrCode.updateMany({ where: { token: qr.token, status: "ativo" }, data: { status: "expirado" } });
       throw new HttpError(400, "QR Code expirado", { valido: false });
+    }
+    if (vinculoQr(qr.idCliente, usuario.id) === "outro") {
+      await auditar("qr_outro_cliente", `Tentativa de ler QR reservado a outro cliente (qr=${qr.idTransacao})`, ip, usuario.id);
+      throw new HttpError(403, MSG_QR_OUTRO_CLIENTE, { valido: false });
     }
     const dados = decifrarDadosQr(qr);
     // Detalhamento para o cliente conferir antes de confirmar (só leitura; o servidor recalcula tudo na confirmação).

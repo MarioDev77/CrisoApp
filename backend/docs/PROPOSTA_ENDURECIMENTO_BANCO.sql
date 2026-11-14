@@ -138,3 +138,37 @@ CREATE TRIGGER logs_auditoria_imutavel_trg
 
 -- DESFAZER D:
 --   DROP TRIGGER IF EXISTS logs_auditoria_imutavel_trg ON logs_auditoria; DROP FUNCTION IF EXISTS logs_auditoria_imutavel();
+
+
+-- =====================================================================================
+-- E) HISTÓRICO FINANCEIRO PRESERVADO — o papel do app não apaga dinheiro nem contas
+-- =====================================================================================
+-- O QUE MUDA : tira DELETE do papel criso_app em usuarios, transacoes, resgates e resgates_recompensa; e um trigger
+--              barra DELETE em transacoes/resgates mesmo para quem tiver o privilégio (só o dono pode desligar o trigger).
+-- POR QUÊ    : o schema já usa exclusão LÓGICA (deletado_em) e as FKs financeiras são SET NULL/RESTRICT; um SQL injection
+--              ou bug com DELETE ainda poderia apagar o histórico ou soltar transações dos clientes. Revisado no código:
+--              o app só faz DELETE físico em lojas PENDENTES (rejeitar cadastro), mfa/códigos de recuperação/verificação
+--              e nas rotinas de retenção do cron (qr_codes, logs_auditoria, rate_limits). Nada disso é afetado aqui.
+-- ANTES      : confirme com  SELECT count(*) FROM transacoes WHERE id_cliente IS NULL;  (esperado: só histórico antigo, se houver).
+-- IMPACTO    : nenhuma rota usa DELETE nessas tabelas. `db:seed`/testes que limpam tabelas rodam com a URL do DONO.
+-- Requer a seção A aplicada (papel criso_app).
+REVOKE DELETE ON usuarios, transacoes, resgates, resgates_recompensa FROM criso_app;
+-- Tabelas futuras continuam recebendo DELETE por padrão (seção A); revise ao criar tabelas financeiras novas.
+
+CREATE OR REPLACE FUNCTION historico_financeiro_sem_delete() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION '% é histórico financeiro: exclusão física não permitida (use estorno/exclusão lógica)', TG_TABLE_NAME;
+END $$;
+DROP TRIGGER IF EXISTS transacoes_sem_delete_trg ON transacoes;
+CREATE TRIGGER transacoes_sem_delete_trg BEFORE DELETE ON transacoes FOR EACH ROW EXECUTE FUNCTION historico_financeiro_sem_delete();
+DROP TRIGGER IF EXISTS resgates_sem_delete_trg ON resgates;
+CREATE TRIGGER resgates_sem_delete_trg BEFORE DELETE ON resgates FOR EACH ROW EXECUTE FUNCTION historico_financeiro_sem_delete();
+
+-- LIMITE HONESTO: isto impede APAGAR. Alterar valores (UPDATE) continua permitido ao app porque o fluxo legítimo
+-- atualiza status de resgate e saldo. A integridade de saldo/valores vem de transações FOR UPDATE, dos CHECKs (seção B) e
+-- da auditoria (seção D). Para detectar adulteração de valores, compare periodicamente SUM(transacoes) com usuarios.saldo.
+
+-- DESFAZER E:
+--   DROP TRIGGER IF EXISTS transacoes_sem_delete_trg ON transacoes; DROP TRIGGER IF EXISTS resgates_sem_delete_trg ON resgates;
+--   DROP FUNCTION IF EXISTS historico_financeiro_sem_delete();
+--   GRANT DELETE ON usuarios, transacoes, resgates, resgates_recompensa TO criso_app;

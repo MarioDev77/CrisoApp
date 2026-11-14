@@ -43,15 +43,18 @@ export function proxy(req: NextRequest) {
 
   const nonce = btoa(crypto.randomUUID());
   const dev = process.env.NODE_ENV !== "production";
+  // Privilégio mínimo: o Google só entra na CSP quando o login com Google está ativo (GOOGLE_LOGIN_ATIVO=true).
+  const google = process.env.GOOGLE_LOGIN_ATIVO === "true";
+  const g = (extra = "") => (google ? ` https://accounts.google.com${extra}` : "");
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://accounts.google.com${dev ? " 'unsafe-eval'" : ""}`,
-    `style-src 'self' 'nonce-${nonce}' https://accounts.google.com`,
-    "img-src 'self' data: blob: https://*.googleusercontent.com",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${g()}${dev ? " 'unsafe-eval'" : ""}`,
+    `style-src 'self' 'nonce-${nonce}'${g()}`,
+    `img-src 'self' data: blob:${google ? " https://*.googleusercontent.com" : ""}`,
     "media-src 'self' blob: mediastream:",
     "font-src 'self'",
-    "connect-src 'self' https://accounts.google.com",
-    "frame-src https://accounts.google.com",
+    `connect-src 'self'${g()}`,
+    google ? "frame-src https://accounts.google.com" : "frame-src 'none'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

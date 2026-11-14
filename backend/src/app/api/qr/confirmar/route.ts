@@ -1,4 +1,6 @@
-import { MSG_PERFIL_INCOMPLETO, perfilCompleto } from "@/lib/perfil";
+import { MSG_PERFIL_INCOMPLETO, emailVerificadoOuErro, perfilCompleto } from "@/lib/perfil";
+import { env } from "@/lib/env";
+import { MSG_QR_OUTRO_CLIENTE, vinculoQr } from "@/lib/qr-vinculo";
 import { z } from "zod";
 import { api } from "@/lib/api";
 import { prisma } from "@/lib/db";
@@ -14,7 +16,7 @@ const MAX_CREDITOS_DIA = 5;
 const MAX_DEBITOS_DIA = 10;
 const body = z.object({ token: z.string({ error: "Token ausente" }).trim().min(1, "Token ausente").max(255), id_transacao: z.coerce.number().optional() });
 
-type QrRow = { token: string; id_transacao: number; id_loja: number; nome_loja: string | null; tipo: "credito" | "debito"; valor: string; materiais: unknown; materiais_desc: string; produto: string | null; dados_enc: string | null; status: string; ip_gerado: string | null; ip_enc: string | null; expira_em: Date };
+type QrRow = { token: string; id_transacao: number; id_loja: number; nome_loja: string | null; tipo: "credito" | "debito"; valor: string; materiais: unknown; materiais_desc: string; produto: string | null; dados_enc: string | null; status: string; id_cliente: number | null; ip_gerado: string | null; ip_enc: string | null; expira_em: Date };
 type Operacao = { id_transacao: number; referencia_qr: number; tipo: "credito" | "debito"; valor: number; kg: number; materiais: Record<Material, number> | null; descricao: string; loja: string | null; status: string; disponivel_em: Date | null };
 type Resultado =
   | { ok: true; msg: string; saldo: number; operacao: Operacao }
@@ -30,7 +32,7 @@ export const POST = api(
         const hashedToken = tokenHashQr(body.token);
         const curto = codigoCurtoDe(body.token);
         const qrs = await tx.$queryRaw<QrRow[]>`
-          SELECT token, id_transacao, id_loja, nome_loja, tipo::text AS tipo, valor::text AS valor, materiais, materiais_desc, produto, dados_enc, status::text AS status, ip_gerado, ip_enc, expira_em
+          SELECT token, id_transacao, id_loja, nome_loja, tipo::text AS tipo, valor::text AS valor, materiais, materiais_desc, produto, dados_enc, status::text AS status, id_cliente, ip_gerado, ip_enc, expira_em
           FROM qr_codes WHERE token = ${body.token} OR token_hash = ${hashedToken} OR codigo_curto = ${curto} FOR UPDATE`;
         const qr = qrs[0];
         if (!qr) return { ok: false, status: 404, msg: "QR Code nao encontrado" };
@@ -44,6 +46,12 @@ export const POST = api(
         if (lock.length === 0) return { ok: false, status: 404, msg: "Cliente nao encontrado" };
         const cli = await tx.usuario.findUniqueOrThrow({ where: { id: usuario.id } });
         if (!perfilCompleto(cli)) return { ok: false, status: 403, msg: MSG_PERFIL_INCOMPLETO, extra: { perfil_incompleto: true } };
+        const ev = emailVerificadoOuErro(cli, env().EXIGIR_EMAIL_VERIFICADO);
+        if (!ev.ok) return { ok: false, status: 403, msg: ev.msg, extra: { email_nao_verificado: true } };
+        // Vínculo revalidado AQUI, dentro da transação e com o QR travado: ninguém consome o QR de outra pessoa.
+        if (vinculoQr(qr.id_cliente, cli.id) === "outro") {
+          return { ok: false, status: 403, msg: MSG_QR_OUTRO_CLIENTE, auditoria: { acao: "qr_outro_cliente", detalhe: `Tentativa de confirmar QR reservado a outro cliente (qr=${qr.id_transacao})`, idCliente: cli.id } };
+        }
 
         const qrIp = ipDoQr({ ipGerado: qr.ip_gerado, ipEnc: qr.ip_enc });
         if (qrIp && ip !== "desconhecido" && qrIp !== ip) {
